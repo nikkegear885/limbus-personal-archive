@@ -23,3 +23,7 @@
 - `index.html`: 모든 UI/스타일/스크립트 포함. 외부 라이브러리가 없는 정적 단일 페이지.
 - `.nojekyll`: GitHub Pages의 Jekyll 처리 비활성화.
 - `README.md`: 배포·백업 설명.
+
+## 배포 상태 확인
+
+Pages를 `main / (root)`로 저장한 후 저장소의 Actions 탭에서 `pages build and deployment` 작업이 성공했는지 확인하세요. 실패하거나 작업이 없으면 해당 작업 및 저장소의 Actions 설정을 확인하세요.
