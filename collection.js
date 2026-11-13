@@ -99,13 +99,27 @@ function collectionPictureWrapWords(ctx,value,maxWidth){
  flush();
  return lines;
 }
-function collectionPictureTitleLines(ctx,row,cardW,factor){
+// 제목은 사진 안에 그립니다. 기본 글씨를 기존보다 20% 줄이고,
+// 긴 이름은 단어 단위로 줄바꿈한 후 카드 안에 들어갈 때까지 조금씩 축소합니다.
+function collectionPictureTitleLayout(ctx,row,cardW,factor,cropPercent){
  const identity=row.kind==='identity';
+ const innerWidth=cardW/factor;
+ const innerHeight=identity?Math.round(innerWidth*370/240*(1-cropPercent/100)):230;
+ const baseFont=identity?25.6:24; // 기존 32px / 30px 대비 20% 축소
+ const bottomInset=identity?9:24;
+ const maxTextHeight=innerHeight-(identity?30:19)-bottomInset;
+ let result=null;
  ctx.save();
- ctx.font=(identity?'900 32px':'900 30px')+' "Malgun Gothic",sans-serif';
- const lines=collectionPictureWrapWords(ctx,row.name,cardW/factor-16);
+ for(let font=baseFont;font>=9.5;font-=0.5){
+  ctx.font='900 '+font+'px "Malgun Gothic",sans-serif';
+  const lines=collectionPictureWrapWords(ctx,row.name,innerWidth-16);
+  const lineHeight=Math.ceil(font*1.17);
+  const height=lines.length*lineHeight;
+  result={lines,fontSize:font,lineHeight,bottomInset};
+  if(height<=maxTextHeight)break;
+ }
  ctx.restore();
- return lines.length?lines:[''];
+ return result;
 }
 function collectionPictureGridLayout(ctx,items,columns,cardW,gap,factor,cropPercent){
  const cols=Math.max(1,columns),cells=[];let total=0;
@@ -113,13 +127,12 @@ function collectionPictureGridLayout(ctx,items,columns,cardW,gap,factor,cropPerc
   const chunk=items.slice(start,start+cols);
   const rowCells=chunk.map((row,i)=>{
    const identity=row.kind==='identity';
-   const lines=collectionPictureTitleLines(ctx,row,cardW,factor);
-   const imageHeight=identity?
-    Math.round(cardW*370/240*(1-cropPercent/100)):Math.round(154*factor);
-   const titleHeight=Math.ceil(((identity?38:36)*lines.length+19+(identity?0:19))*factor);
-   return {row,x:i*(cardW+gap),lines,imageHeight,neededHeight:imageHeight+titleHeight};
+   const title=collectionPictureTitleLayout(ctx,row,cardW,factor,cropPercent);
+   const height=identity?
+    Math.round(cardW*370/240*(1-cropPercent/100)):Math.round(230*factor);
+   return {row,x:i*(cardW+gap),title,height};
   });
-  const rowHeight=Math.max(...rowCells.map(item=>item.neededHeight));
+  const rowHeight=Math.max(...rowCells.map(item=>item.height));
   rowCells.forEach(item=>cells.push({...item,y:total,height:rowHeight}));
   total+=rowHeight+gap;
  }
@@ -157,33 +170,27 @@ function collectionPictureDrawCover(ctx,img,x,y,w,h,position){
  ctx.drawImage(img,x+(w-sw)*center,y+(h-sh)*0.5,sw,sh);
  return true;
 }
-function collectionPictureCard(ctx,row,image,x,y,w,h,sinnerName,cardScale=1,cropPercent=0,titleLines=null){
- // 이미지 카드 글씨는 기존 14/13px에서 32/30px로 확대한 저장 전용 렌더러입니다.
+function collectionPictureCard(ctx,row,image,x,y,w,h,sinnerName,cardScale=1,cropPercent=0,titleLayout=null){
+ // 20% 작아진 이름을 사진 안쪽 하단에 그리고, 별도 이름 영역은 만들지 않습니다.
  if(cardScale!==1){
   ctx.save();ctx.translate(x,y);ctx.scale(cardScale,cardScale);
-  collectionPictureCard(ctx,row,image,0,0,w/cardScale,h/cardScale,sinnerName,1,cropPercent,titleLines);
+  collectionPictureCard(ctx,row,image,0,0,w/cardScale,h/cardScale,sinnerName,1,cropPercent,titleLayout);
   ctx.restore();return;
  }
  const identity=row.kind==='identity';
- const photoHeight=identity?Math.round(w*370/240*(1-cropPercent/100)):154;
  const border=identity?(row.rarity===3?'#d4a750':row.rarity===2?'#b14537':'#8b785a'):'#786447';
- const lines=titleLines||collectionPictureTitleLines(ctx,row,w,1);
- const lineHeight=identity?38:36;
- const labelY=y+photoHeight+9;
+ const title=titleLayout||collectionPictureTitleLayout(ctx,row,w,1,cropPercent);
  ctx.save();
  collectionPictureRounded(ctx,x,y,w,h,11);ctx.fillStyle='#151b20';ctx.fill();
  ctx.clip();
  if(identity){
   if(image){
-   const fullArtworkHeight=photoHeight/(1-cropPercent/100);
+   const fullArtworkHeight=h/(1-cropPercent/100);
    collectionPictureDrawCover(ctx,image,x+2,y+2,w-4,fullArtworkHeight-4,row.imagePosition);
   }else{
    ctx.fillStyle='#a4b0b4';ctx.font='13px "Malgun Gothic",sans-serif';ctx.textAlign='center';
-   ctx.fillText('이미지 연결 실패',x+w/2,y+photoHeight/2);
+   ctx.fillText('이미지 연결 실패',x+w/2,y+h/2);
   }
-  ctx.textAlign='left';ctx.font='900 16px "Malgun Gothic",sans-serif';
-  ctx.fillStyle='#ffdb75';ctx.shadowColor='#000';ctx.shadowBlur=3;
-  ctx.fillText('★'.repeat(row.rarity),x+8,y+19);ctx.shadowBlur=0;
  }else{
   const cx=x+w/2,cy=y+79,r=65;
   ctx.save();ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.clip();
@@ -198,15 +205,26 @@ function collectionPictureCard(ctx,row,image,x,y,w,h,sinnerName,cardScale=1,crop
   ctx.strokeStyle=({ZAYIN:'#99764c',TETH:'#c17e3c',HE:'#9f61bc',WAW:'#d36c45',ALEPH:'#dc4545'})[row.rarity]||'#a17b4e';
   ctx.lineWidth=4;ctx.stroke();
  }
- // 커진 이름은 사진 밖의 어두운 영역에 두어 일러스트를 가리지 않습니다.
- ctx.fillStyle='#10191e';ctx.fillRect(x,y+photoHeight,w,h-photoHeight);
+ const titleHeight=title.lines.length*title.lineHeight;
+ const top=y+h-title.bottomInset-titleHeight;
+ const gradient=ctx.createLinearGradient(0,Math.max(y,top-22),0,y+h);
+ gradient.addColorStop(0,'rgba(0,0,0,0)');
+ gradient.addColorStop(0.35,'rgba(0,0,0,.48)');
+ gradient.addColorStop(1,'rgba(0,0,0,.94)');
+ ctx.fillStyle=gradient;
+ ctx.fillRect(x,Math.max(y,top-22),w,Math.min(h,y+h-Math.max(y,top-22)));
  ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle='#ffdf85';
- ctx.font=(identity?'900 32px':'900 30px')+' "Malgun Gothic",sans-serif';
- lines.forEach((line,i)=>ctx.fillText(line,x+w/2,labelY+i*lineHeight));
- ctx.textBaseline='alphabetic';
- if(!identity){
-  ctx.fillStyle='#aab3b8';ctx.font='11px "Malgun Gothic",sans-serif';
-  ctx.fillText(row.rarity+(sinnerName?' · '+sinnerName:''),x+w/2,labelY+lines.length*lineHeight+8);
+ ctx.shadowColor='#000';ctx.shadowBlur=3;
+ ctx.font='900 '+title.fontSize+'px "Malgun Gothic",sans-serif';
+ title.lines.forEach((line,i)=>ctx.fillText(line,x+w/2,top+i*title.lineHeight));
+ ctx.shadowBlur=0;ctx.textBaseline='alphabetic';
+ if(identity){
+  ctx.textAlign='left';ctx.font='900 16px "Malgun Gothic",sans-serif';
+  ctx.fillStyle='#ffdb75';ctx.shadowColor='#000';ctx.shadowBlur=3;
+  ctx.fillText('★'.repeat(row.rarity),x+8,y+19);ctx.shadowBlur=0;
+ }else{
+  ctx.textAlign='center';ctx.fillStyle='#aab3b8';ctx.font='11px "Malgun Gothic",sans-serif';
+  ctx.fillText(row.rarity+(sinnerName?' · '+sinnerName:''),x+w/2,y+h-7);
  }
  ctx.restore();
  ctx.strokeStyle=border;ctx.lineWidth=2;
@@ -437,7 +455,7 @@ async function collectionDownloadOwnedPicture(){
    const current=getLayout(items,columnCount);
    for(const item of current.cells){
     collectionPictureCard(ctx,item.row,loadedMap.get(item.row.id),x+item.x,y+item.y,cardW,item.height,
-     sinnerName,factor,cropPercent,item.lines);
+     sinnerName,factor,cropPercent,item.title);
    }
    return current.height;
   };
