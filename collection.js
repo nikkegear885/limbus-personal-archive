@@ -350,10 +350,19 @@ async function collectionDownloadOwnedPicture(){
   const splitSides=grouped&&$('collectionExportSplitSides')?.checked===true;
   const cropPercent=Number($('collectionExportCropPercent').value)||0;
   const groups=grouped?collectionExportSinnerGroups(identities,egos,sinners):[];
-  // 캔버스 폭은 기존과 동일. 양쪽 영역 안에서 각각 카드 열 수를 계산합니다.
-  const sideGap=12,sideWidth=(width-pad*2-sideGap)/2;
-  const sideCols=Math.max(1,Math.floor((sideWidth+gap+0.001)/(cardW+gap)));
+  // 좌우 분할에서는 실제 보유 카드 열 수만큼만 폭을 차지하게 합니다.
+  // 각 영역이 반쪽 폭을 무조건 점유하면 카드가 적은 쪽에 거대한 빈 공간이 생깁니다.
   const splitGroups=splitSides?collectionExportSplitSinnerGroups(groups):[];
+  const availableSideWidth=(width-pad*2-12)/2;
+  const maxSideCols=Math.max(1,Math.floor((availableSideWidth+gap+0.001)/(cardW+gap)));
+  const sideColumnCounts=splitGroups.map(side=>{
+   const maxItems=Math.max(0,...side.map(group=>Math.max(group.identities.length,group.egos.length)));
+   return maxItems?Math.min(maxSideCols,maxItems):0;
+  });
+  const sideWidths=sideColumnCounts.map(count=>count?count*cardW+(count-1)*gap:0);
+  const sideGap=sideWidths.length===2&&sideWidths[0]&&sideWidths[1]?8:0;
+  const exportWidth=splitSides?Math.ceil(pad*2+sideWidths.reduce((sum,w)=>sum+w,0)+sideGap):width;
+  const sidePositions=[pad,pad+(sideWidths[0]||0)+sideGap];
   const identityHeight=Math.round(cardW*370/240*(1-cropPercent/100)),egoHeight=Math.round(230*factor);
   const sections=[
    {kind:'identity',items:identities,title:'인격',height:identityHeight},
@@ -373,7 +382,7 @@ async function collectionDownloadOwnedPicture(){
   const groupsHeight=(items,columnCount)=>items.reduce((sum,group,i)=>
    sum+(i?groupBreak:0)+groupContentHeight(group,columnCount),0);
   const contentHeight=splitSides?
-   Math.max(...splitGroups.map(side=>groupsHeight(side,sideCols))):
+   Math.max(...splitGroups.map((side,i)=>groupsHeight(side,sideColumnCounts[i]||1))):
    grouped?groupsHeight(groups,cols):
    sections.reduce((sum,section,i)=>sum+(i?sectionGap:0)+groupedBlockHeight(section.items,section.height),0);
   const logicalHeight=head+contentHeight+footer;
@@ -382,23 +391,26 @@ async function collectionDownloadOwnedPicture(){
   // 긴 이미지에서 브라우저 최대 캔버스 크기 및 메모리 사용을 제한합니다.
   const pixelBudget=90000000,maxEdge=30000;
   const outputScale=[3,2,1].find(n=>
-   width*n<=maxEdge&&logicalHeight*n<=maxEdge&&width*logicalHeight*n*n<=pixelBudget);
+   exportWidth*n<=maxEdge&&logicalHeight*n<=maxEdge&&exportWidth*logicalHeight*n*n<=pixelBudget);
   if(!outputScale)throw new Error('사진이 너무 길어 저장할 수 없습니다. 수감자를 나눠 저장해 주세요');
-  canvas.width=width*outputScale;
+  canvas.width=exportWidth*outputScale;
   canvas.height=Math.ceil(logicalHeight*outputScale);
   ctx.setTransform(outputScale,0,0,outputScale,0,0);
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-  ctx.fillStyle='#0c1216';ctx.fillRect(0,0,width,logicalHeight);
+  ctx.fillStyle='#0c1216';ctx.fillRect(0,0,exportWidth,logicalHeight);
   const loadedMap=new Map(allRows.map((row,i)=>[row.id,images[i]]));
   let y=head;
   if(splitSides){
    // 같은 PNG의 왼쪽: 이상·파우스트·돈키호테·료슈·뫼르소·홍루 / 오른쪽: 히스클리프부터 그레고르.
    // 두 영역은 독립적인 높이로 쌓으며, 영역 내부 수감자 사이는 기존처럼 5px만 띄웁니다.
-   const centerX=width/2;
-   ctx.strokeStyle='#4c5c59';ctx.lineWidth=1;
-   ctx.beginPath();ctx.moveTo(centerX,head);ctx.lineTo(centerX,logicalHeight-footer);ctx.stroke();
+   if(sideGap){
+    const centerX=sidePositions[1]-sideGap/2;
+    ctx.strokeStyle='#4c5c59';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(centerX,head);ctx.lineTo(centerX,logicalHeight-footer);ctx.stroke();
+   }
    for(let sideIndex=0;sideIndex<2;sideIndex++){
-    const sideX=sideIndex===0?pad:pad+sideWidth+sideGap;
+    const sideX=sidePositions[sideIndex],sideCols=sideColumnCounts[sideIndex]||1;
+    const sideWidth=sideWidths[sideIndex];
     let sideY=head;
     const sideGroups=splitGroups[sideIndex];
     for(let groupIndex=0;groupIndex<sideGroups.length;groupIndex++){
