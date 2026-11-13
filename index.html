@@ -97,7 +97,7 @@
 .ego-card.ego-rank-he .collection-ego-circle{border-color:#9f61bc}
 .ego-card.ego-rank-waw .collection-ego-circle{border-color:#d36c45}
 .ego-card.ego-rank-aleph .collection-ego-circle{border-color:#dc4545}
-.collection-ego-name{display:block;width:100%;text-align:center;color:#ffda70;font-size:12px;font-weight:850;line-height:1.4;overflow-wrap:anywhere;padding:5px 3px 0}
+.collection-ego-circle .collection-ego-name{position:absolute;z-index:2;left:0;right:0;bottom:0;display:flex;align-items:flex-end;justify-content:center;width:100%;min-height:40%;max-height:80%;padding:24px 6px 10px;background:linear-gradient(180deg,transparent 0%,#0008 43%,#000e 100%);color:#ffda70;text-align:center;font-size:10.5px;font-weight:850;line-height:1.15;word-break:keep-all;overflow-wrap:anywhere;text-shadow:0 1px 3px #000;pointer-events:none}
 .collection-ego-meta{display:block;width:100%;color:#9fa8aa;font-size:10px;text-align:center}
 .collection-ego-circle .collection-owned-mark{top:5px;right:4px}
 .collection-empty{grid-column:1/-1;border:1px dashed #516066;padding:50px 12px;text-align:center;border-radius:12px;color:var(--muted)}
@@ -205,8 +205,8 @@
   </div>
 </div>
 <input type="file" id="photoInput" accept="image/*" multiple hidden><input type="file" id="restoreInput" accept="application/json,.json" hidden>
-<script src="collection-data.js?v=20261113-sinner-divider-top2"></script>
-<script src="collection.js?v=20261113-sinner-divider-top2"></script>
+<script src="collection-data.js?v=20261113-ego-name-inside1"></script>
+<script src="collection.js?v=20261113-ego-name-inside1"></script>
 <script>
 'use strict';
 const CATEGORIES=['거울던전','E.G.O 기프트','덱·인격','테마팩','스토리','기타'];
