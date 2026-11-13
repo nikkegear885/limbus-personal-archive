@@ -279,12 +279,12 @@ function collectionExportSizeSettings(){
 }
 // 사진 저장 설정도 다른 도감 설정과 동일한 IndexedDB(meta)에 보관합니다.
 const collectionExportPreferenceDefaults=Object.freeze({
- identity:true,ego:true,rank1:true,rank2:true,rank3:true,groupBySinner:true,splitSides:false,cropPercent:0,cardSize:70
+ identity:true,ego:true,rank1:true,rank2:true,rank3:true,groupBySinner:true,splitSides:false,vertical:false,cropPercent:0,cardSize:70
 });
 const collectionExportPreferenceControls={
  identity:'collectionExportIdentity',ego:'collectionExportEgo',
  rank1:'collectionExportRank1',rank2:'collectionExportRank2',rank3:'collectionExportRank3',
- groupBySinner:'collectionExportGroupBySinner',splitSides:'collectionExportSplitSides'
+ groupBySinner:'collectionExportGroupBySinner',splitSides:'collectionExportSplitSides',vertical:'collectionExportVertical'
 };
 let collectionExportSaveQueue=Promise.resolve();
 function collectionExportNormalizePreferences(value){
@@ -337,7 +337,7 @@ function collectionExportUpdateSummary(){
   if(box)box.disabled=!identity.checked;
  }
  const split=$('collectionExportSplitSides');
- if(split)split.disabled=$('collectionExportGroupBySinner')?.checked!==true;
+ if(split)split.disabled=$('collectionExportGroupBySinner')?.checked!==true||$('collectionExportVertical')?.checked===true;
  const size=collectionExportSizeSettings();
  const sizeValue=$('collectionExportCardSizeValue');
  if(sizeValue)sizeValue.textContent=size.percent+'%';
@@ -403,7 +403,9 @@ async function collectionDownloadOwnedPicture(){
   if(!ctx)throw new Error('브라우저에서 이미지 캔버스를 지원하지 않습니다');
   const {width,pad,cols,gap,cardW,factor}=collectionExportSizeSettings();
   const grouped=$('collectionExportGroupBySinner')?.checked!==false;
-  const splitSides=grouped&&$('collectionExportSplitSides')?.checked===true;
+  const vertical=$('collectionExportVertical')?.checked===true;
+  const splitSides=grouped&&!vertical&&$('collectionExportSplitSides')?.checked===true;
+  const layoutCols=vertical?1:cols;
   const cropPercent=Number($('collectionExportCropPercent').value)||0;
   const groups=grouped?collectionExportSinnerGroups(identities,egos,sinners):[];
   // 기존 분할 구성과 카드 크기 설정은 유지하고, 이름 줄 수에 맞춰 행 높이만 계산합니다.
@@ -416,7 +418,8 @@ async function collectionDownloadOwnedPicture(){
   });
   const sideWidths=sideColumnCounts.map(count=>count?count*cardW+(count-1)*gap:0);
   const sideGap=sideWidths.length===2&&sideWidths[0]&&sideWidths[1]?8:0;
-  const exportWidth=splitSides?Math.ceil(pad*2+sideWidths.reduce((sum,w)=>sum+w,0)+sideGap):width;
+  const exportWidth=vertical?Math.ceil(pad*2+cardW):
+   splitSides?Math.ceil(pad*2+sideWidths.reduce((sum,w)=>sum+w,0)+sideGap):width;
   const sidePositions=[pad,pad+(sideWidths[0]||0)+sideGap];
   const sections=[
    {kind:'identity',items:identities},
@@ -437,8 +440,8 @@ async function collectionDownloadOwnedPicture(){
   const groupsHeight=(items,columnCount)=>items.reduce((sum,group,i)=>sum+(i?groupBreak:0)+groupHeight(group,columnCount),0);
   const contentHeight=splitSides?
    Math.max(...splitGroups.map((side,i)=>groupsHeight(side,sideColumnCounts[i]||1))):
-   grouped?groupsHeight(groups,cols):
-   sections.reduce((sum,section,i)=>sum+(i?sectionGap:0)+getLayout(section.items,cols).height,0);
+   grouped?groupsHeight(groups,layoutCols):
+   sections.reduce((sum,section,i)=>sum+(i?sectionGap:0)+getLayout(section.items,layoutCols).height,0);
   const logicalHeight=head+contentHeight+footer;
   if(logicalHeight>30000)throw new Error('보유 이미지가 너무 길어 저장할 수 없습니다. 수감자를 선택해 나눠 저장해 주세요');
   const pixelBudget=90000000,maxEdge=30000;
@@ -489,9 +492,9 @@ async function collectionDownloadOwnedPicture(){
      ctx.beginPath();ctx.moveTo(pad+12,dividerY);ctx.lineTo(width-pad-12,dividerY);ctx.stroke();
      y+=groupBreak;
     }
-    y+=drawGrid(group.identities,cols,pad,y);
+    y+=drawGrid(group.identities,layoutCols,pad,y);
     if(group.identities.length&&group.egos.length)y+=mixedGap;
-    y+=drawGrid(group.egos,cols,pad,y);
+    y+=drawGrid(group.egos,layoutCols,pad,y);
    }
   }else{
    let y=head;
@@ -502,7 +505,7 @@ async function collectionDownloadOwnedPicture(){
      ctx.beginPath();ctx.moveTo(pad+12,dividerY);ctx.lineTo(width-pad-12,dividerY);ctx.stroke();
      y+=sectionGap;
     }
-    y+=drawGrid(section.items,cols,pad,y);
+    y+=drawGrid(section.items,layoutCols,pad,y);
    }
   }
   const failed=images.filter(img=>!img).length;
@@ -566,7 +569,7 @@ function wireCollection(){
  $('collectionExportCardSize').addEventListener('input',collectionExportUpdateSummary);
  $('collectionExportCardSize').addEventListener('change',collectionExportSettingsChanged);
  $('collectionExportCropPercent').addEventListener('change',collectionExportSettingsChanged);
- for(const id of ['collectionExportIdentity','collectionExportEgo','collectionExportRank1','collectionExportRank2','collectionExportRank3','collectionExportGroupBySinner','collectionExportSplitSides']){
+ for(const id of ['collectionExportIdentity','collectionExportEgo','collectionExportRank1','collectionExportRank2','collectionExportRank3','collectionExportGroupBySinner','collectionExportSplitSides','collectionExportVertical']){
   $(id).addEventListener('change',collectionExportSettingsChanged);
  }
  $('collectionDownloadPicture').addEventListener('click',collectionDownloadOwnedPicture);
