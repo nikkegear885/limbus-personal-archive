@@ -201,6 +201,14 @@ function collectionExportSinnerGroups(identities,egos,sinners){
   egos:egos.filter(row=>row.sinner===s.id)
  })).filter(group=>group.identities.length||group.egos.length);
 }
+// 뫼르소까지 왼쪽, 홍루부터 오른쪽. 카탈로그 순서가 바뀌어도 수감자 ID로 분리합니다.
+function collectionExportSplitSinnerGroups(groups){
+ const leftIds=new Set(['yisang','faust','don','ryoshu','meursault']);
+ return [
+  groups.filter(group=>leftIds.has(group.sinner)),
+  groups.filter(group=>!leftIds.has(group.sinner))
+ ];
+}
 function collectionExportSizeSettings(){
  const slider=$('collectionExportCardSize');
  const raw=Number(slider?.value);
@@ -215,12 +223,12 @@ function collectionExportSizeSettings(){
 }
 // 사진 저장 설정도 다른 도감 설정과 동일한 IndexedDB(meta)에 보관합니다.
 const collectionExportPreferenceDefaults=Object.freeze({
- identity:true,ego:true,rank1:true,rank2:true,rank3:true,groupBySinner:true,cropPercent:0,cardSize:70
+ identity:true,ego:true,rank1:true,rank2:true,rank3:true,groupBySinner:true,splitSides:false,cropPercent:0,cardSize:70
 });
 const collectionExportPreferenceControls={
  identity:'collectionExportIdentity',ego:'collectionExportEgo',
  rank1:'collectionExportRank1',rank2:'collectionExportRank2',rank3:'collectionExportRank3',
- groupBySinner:'collectionExportGroupBySinner'
+ groupBySinner:'collectionExportGroupBySinner',splitSides:'collectionExportSplitSides'
 };
 let collectionExportSaveQueue=Promise.resolve();
 function collectionExportNormalizePreferences(value){
@@ -272,6 +280,8 @@ function collectionExportUpdateSummary(){
   const box=$('collectionExportRank'+n);
   if(box)box.disabled=!identity.checked;
  }
+ const split=$('collectionExportSplitSides');
+ if(split)split.disabled=$('collectionExportGroupBySinner')?.checked!==true;
  const size=collectionExportSizeSettings();
  const sizeValue=$('collectionExportCardSizeValue');
  if(sizeValue)sizeValue.textContent=size.percent+'%';
@@ -337,8 +347,13 @@ async function collectionDownloadOwnedPicture(){
   if(!ctx)throw new Error('브라우저에서 이미지 캔버스를 지원하지 않습니다');
   const {width,pad,cols,gap,cardW,factor}=collectionExportSizeSettings();
   const grouped=$('collectionExportGroupBySinner')?.checked!==false;
+  const splitSides=grouped&&$('collectionExportSplitSides')?.checked===true;
   const cropPercent=Number($('collectionExportCropPercent').value)||0;
   const groups=grouped?collectionExportSinnerGroups(identities,egos,sinners):[];
+  // 캔버스 폭은 기존과 동일. 양쪽 영역 안에서 각각 카드 열 수를 계산합니다.
+  const sideGap=20,sideWidth=(width-pad*2-sideGap)/2;
+  const sideCols=Math.max(1,Math.floor((sideWidth+gap+0.001)/(cardW+gap)));
+  const splitGroups=splitSides?collectionExportSplitSinnerGroups(groups):[];
   const identityHeight=Math.round(cardW*370/240*(1-cropPercent/100)),egoHeight=Math.round(230*factor);
   const sections=[
    {kind:'identity',items:identities,title:'인격',height:identityHeight},
@@ -348,15 +363,18 @@ async function collectionDownloadOwnedPicture(){
   const head=8,footer=8,sectionGap=8;
   // 수감자 사이에는 1px 선이 들어갈 최소한의 공간만 유지합니다.
   const groupBreak=5,mixedGap=3;
-  const groupedBlockHeight=(items,height)=>{
-   const count=Math.ceil(items.length/cols);
+  const groupedBlockHeight=(items,height,columnCount=cols)=>{
+   const count=Math.ceil(items.length/columnCount);
    return count?count*height+(count-1)*gap:0;
   };
-  const groupContentHeight=group=>groupedBlockHeight(group.identities,identityHeight)+
+  const groupContentHeight=(group,columnCount=cols)=>groupedBlockHeight(group.identities,identityHeight,columnCount)+
    (group.identities.length&&group.egos.length?mixedGap:0)+
-   groupedBlockHeight(group.egos,egoHeight);
-  const contentHeight=grouped?
-   groups.reduce((sum,group,i)=>sum+(i?groupBreak:0)+groupContentHeight(group),0):
+   groupedBlockHeight(group.egos,egoHeight,columnCount);
+  const groupsHeight=(items,columnCount)=>items.reduce((sum,group,i)=>
+   sum+(i?groupBreak:0)+groupContentHeight(group,columnCount),0);
+  const contentHeight=splitSides?
+   Math.max(...splitGroups.map(side=>groupsHeight(side,sideCols))):
+   grouped?groupsHeight(groups,cols):
    sections.reduce((sum,section,i)=>sum+(i?sectionGap:0)+groupedBlockHeight(section.items,section.height),0);
   const logicalHeight=head+contentHeight+footer;
   if(logicalHeight>30000)throw new Error('보유 이미지가 너무 길어 저장할 수 없습니다. 수감자를 선택해 나눠 저장해 주세요');
@@ -373,7 +391,42 @@ async function collectionDownloadOwnedPicture(){
   ctx.fillStyle='#0c1216';ctx.fillRect(0,0,width,logicalHeight);
   const loadedMap=new Map(allRows.map((row,i)=>[row.id,images[i]]));
   let y=head;
-  if(grouped){
+  if(splitSides){
+   // 같은 PNG의 왼쪽: 이상·파우스트·돈키호테·료슈·뫼르소 / 오른쪽: 나머지 수감자.
+   // 두 영역은 독립적인 높이로 쌓으며, 영역 내부 수감자 사이는 기존처럼 5px만 띄웁니다.
+   const centerX=width/2;
+   ctx.strokeStyle='#4c5c59';ctx.lineWidth=1;
+   ctx.beginPath();ctx.moveTo(centerX,head);ctx.lineTo(centerX,logicalHeight-footer);ctx.stroke();
+   for(let sideIndex=0;sideIndex<2;sideIndex++){
+    const sideX=sideIndex===0?pad:pad+sideWidth+sideGap;
+    let sideY=head;
+    const sideGroups=splitGroups[sideIndex];
+    for(let groupIndex=0;groupIndex<sideGroups.length;groupIndex++){
+     const group=sideGroups[groupIndex];
+     if(groupIndex>0){
+      const dividerY=sideY+groupBreak/2;
+      ctx.strokeStyle='#62716c';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(sideX+3,dividerY);ctx.lineTo(sideX+sideWidth-3,dividerY);ctx.stroke();
+      sideY+=groupBreak;
+     }
+     for(let i=0;i<group.identities.length;i++){
+      const row=group.identities[i];
+      const x=sideX+(i%sideCols)*(cardW+gap);
+      const cy=sideY+Math.floor(i/sideCols)*(identityHeight+gap);
+      collectionPictureCard(ctx,row,loadedMap.get(row.id),x,cy,cardW,identityHeight,'',factor,cropPercent);
+     }
+     sideY+=groupedBlockHeight(group.identities,identityHeight,sideCols);
+     if(group.identities.length&&group.egos.length)sideY+=mixedGap;
+     for(let i=0;i<group.egos.length;i++){
+      const row=group.egos[i];
+      const x=sideX+(i%sideCols)*(cardW+gap);
+      const cy=sideY+Math.floor(i/sideCols)*(egoHeight+gap);
+      collectionPictureCard(ctx,row,loadedMap.get(row.id),x,cy,cardW,egoHeight,'',factor,cropPercent);
+     }
+     sideY+=groupedBlockHeight(group.egos,egoHeight,sideCols);
+    }
+   }
+  }else if(grouped){
    // 수감자별 인격 카드 다음에 그 수감자의 원형 E.G.O를 배치합니다.
    // 수감자 이름/번호는 쓰지 않고 가로 구분선과 여백만 추가합니다.
    for(let g=0;g<groups.length;g++){
@@ -476,7 +529,7 @@ function wireCollection(){
  $('collectionExportCardSize').addEventListener('input',collectionExportUpdateSummary);
  $('collectionExportCardSize').addEventListener('change',collectionExportSettingsChanged);
  $('collectionExportCropPercent').addEventListener('change',collectionExportSettingsChanged);
- for(const id of ['collectionExportIdentity','collectionExportEgo','collectionExportRank1','collectionExportRank2','collectionExportRank3','collectionExportGroupBySinner']){
+ for(const id of ['collectionExportIdentity','collectionExportEgo','collectionExportRank1','collectionExportRank2','collectionExportRank3','collectionExportGroupBySinner','collectionExportSplitSides']){
   $(id).addEventListener('change',collectionExportSettingsChanged);
  }
  $('collectionDownloadPicture').addEventListener('click',collectionDownloadOwnedPicture);
