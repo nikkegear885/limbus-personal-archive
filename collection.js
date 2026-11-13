@@ -3,6 +3,15 @@
 let collectionKind='identity', collectionOwnerFilter='all', collectionSinnerFilter='all', collectionOrder='sinner';
 const collectionRows=()=>window.LIMBUS_COLLECTION_CATALOG?.rows||[];
 const collectionSinners=()=>window.LIMBUS_COLLECTION_CATALOG?.sinners||[];
+// 수감자별 게임 심볼. 도감 필터와 세로형 PNG에서 동일한 마크를 사용합니다.
+const collectionSinnerLogoNumbers=Object.freeze({
+ yisang:1,faust:2,don:3,ryoshu:4,meursault:5,honglu:6,
+ heathcliff:7,ishmael:8,rodion:9,sinclair:10,outis:11,gregor:12
+});
+function collectionSinnerLogoURL(id){
+ const number=collectionSinnerLogoNumbers[id];
+ return number?'https://raw.githubusercontent.com/eldritchtools/limbus-assets/main/assets/sinners/'+number+'.webp':'';
+}
 const collectionOwned=row=>!!row.base||!!state.collectionOwned?.[row.id];
 function collectionStats(){
  const rows=collectionRows(),ids=rows.filter(x=>x.kind==='identity'),egos=rows.filter(x=>x.kind==='ego');
@@ -436,7 +445,7 @@ async function collectionDownloadOwnedPicture(){
    {kind:'identity',items:identities},
    {kind:'ego',items:egos}
   ].filter(section=>section.items.length);
-  const head=vertical?64:8,footer=8,sectionGap=8,groupBreak=5,mixedGap=3;
+  const head=vertical?Math.max(78,Math.round(112*factor)):8,footer=8,sectionGap=8,groupBreak=5,mixedGap=3;
   const layoutCache=new WeakMap();
   const getLayout=(items,columnCount)=>{
    let cache=layoutCache.get(items);
@@ -466,6 +475,12 @@ async function collectionDownloadOwnedPicture(){
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
   ctx.fillStyle='#0c1216';ctx.fillRect(0,0,exportWidth,logicalHeight);
   const loadedMap=new Map(allRows.map((row,i)=>[row.id,images[i]]));
+  // PNG의 심볼은 캔버스 렌더링 전에 완전히 불러와 내보낸 이미지에도 포함시킵니다.
+  const sinnerLogoImages=new Map();
+  if(vertical)await Promise.all(verticalGroups.map(async group=>{
+   const logo=await collectionPictureImage(collectionSinnerLogoURL(group.sinner));
+   if(logo)sinnerLogoImages.set(group.sinner,logo);
+  }));
   const drawGrid=(items,columnCount,x,y,sinnerName='')=>{
    const current=getLayout(items,columnCount);
    for(const item of current.cells){
@@ -482,26 +497,32 @@ async function collectionDownloadOwnedPicture(){
     const x=pad+i*(cardW+sinnerColumnGap);
     const name=sinnerNames.get(group.sinner)||group.sinner;
     ctx.save();
-    // 미리보기에서 12개 열을 한꺼번에 축소해도 헤더가 사라지지 않도록
-    // 별도 짙은 배경과 밝은 큰 글씨, 금색 밑줄을 둡니다.
-    ctx.fillStyle='#2b363a';
-    collectionPictureRounded(ctx,x,7,cardW,head-16,7);ctx.fill();
-    ctx.strokeStyle='#bfa16c';ctx.lineWidth=1;
-    collectionPictureRounded(ctx,x+0.5,7.5,cardW-1,head-17,7);ctx.stroke();
+    ctx.fillStyle='#202b2f';
+    collectionPictureRounded(ctx,x,6,cardW,head-13,7);ctx.fill();
+    ctx.strokeStyle='#ad9569';ctx.lineWidth=1;
+    collectionPictureRounded(ctx,x+0.5,6.5,cardW-1,head-14,7);ctx.stroke();
+    const logo=sinnerLogoImages.get(group.sinner);
+    const logoSize=Math.min(cardW-12,Math.max(34,Math.round(64*factor)));
+    const logoY=9;
+    if(logo){
+     const iw=logo.naturalWidth||logo.width,ih=logo.naturalHeight||logo.height;
+     const sizeScale=Math.min(logoSize/iw,logoSize/ih);
+     const dw=iw*sizeScale,dh=ih*sizeScale;
+     ctx.drawImage(logo,x+(cardW-dw)/2,logoY+(logoSize-dh)/2,dw,dh);
+    }
     ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillStyle='#fff0c8';
-    ctx.shadowColor='#050807';ctx.shadowBlur=4;
-    let fontSize=27;
+    ctx.fillStyle='#fff0c8';ctx.shadowColor='#050807';ctx.shadowBlur=3;
+    let fontSize=Math.min(27,Math.max(11,Math.round(25*factor)));
     while(fontSize>9){
      ctx.font='900 '+fontSize+'px "Malgun Gothic",sans-serif';
      if(ctx.measureText(name).width<=cardW-10)break;
      fontSize-=0.5;
     }
     ctx.font='900 '+fontSize+'px "Malgun Gothic",sans-serif';
-    ctx.fillText(name,x+cardW/2,head/2-1,cardW-10);
+    ctx.fillText(name,x+cardW/2,head-19,cardW-10);
     ctx.shadowBlur=0;
     ctx.strokeStyle='#e1b975';ctx.lineWidth=2;
-    ctx.beginPath();ctx.moveTo(x+4,head-5);ctx.lineTo(x+cardW-4,head-5);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x+4,head-4);ctx.lineTo(x+cardW-4,head-4);ctx.stroke();
     ctx.restore();
     if(i>0){
      const dividerX=x-sinnerColumnGap/2;
@@ -583,7 +604,11 @@ async function collectionDownloadOwnedPicture(){
 async function collectionSave(){await action('meta','put',{id:'collectionOwnedV1',values:state.collectionOwned||{}})}
 function wireCollection(){
  const sinners=collectionSinners();
- const sinnerTab=(id,name,selected)=>'<button type="button" class="collection-filter collection-sinner-tab'+(selected?' selected':'')+'" data-collection-sinner="'+esc(id)+'"><span class="collection-sinner-name">'+esc(name)+'</span><span class="collection-sinner-count"><span data-collection-count="identity">인격 0/0</span><span data-collection-count="ego">E.G.O 0/0</span></span></button>';
+ const sinnerTab=(id,name,selected)=>{
+  const logo=collectionSinnerLogoURL(id);
+  const badge=logo?'<img class="collection-sinner-logo" src="'+esc(logo)+'" data-collection-backup="'+esc(collectionImageMirror(logo))+'" loading="lazy" decoding="async" alt="" aria-hidden="true">':'<span class="collection-sinner-logo-placeholder" aria-hidden="true"></span>';
+  return '<button type="button" class="collection-filter collection-sinner-tab'+(selected?' selected':'')+'" data-collection-sinner="'+esc(id)+'">'+badge+'<span class="collection-sinner-name">'+esc(name)+'</span><span class="collection-sinner-count"><span data-collection-count="identity">인격 0/0</span><span data-collection-count="ego">E.G.O 0/0</span></span></button>';
+ };
  $('collectionSinnerTabs').innerHTML=sinnerTab('all','전체',true)+sinners.map(s=>sinnerTab(s.id,s.name,false)).join('');
  $('collectionSinnerTabs').addEventListener('click',e=>{const b=e.target.closest('button[data-collection-sinner]');if(!b)return;collectionSinnerFilter=b.dataset.collectionSinner;renderCollection()});
  $('collectionMode').addEventListener('click',e=>{const b=e.target.closest('button[data-collection-kind]');if(!b)return;collectionKind=b.dataset.collectionKind;$('collectionRarity').innerHTML=collectionKind==='identity'?'<option value="">전체 등급</option><option value="3">3성</option><option value="2">2성</option><option value="1">1성</option>':'<option value="">전체 등급</option><option>ZAYIN</option><option>TETH</option><option>HE</option><option>WAW</option><option>ALEPH</option>';$('collectionRarity').value='';renderCollection()});
