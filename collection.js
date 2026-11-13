@@ -19,7 +19,7 @@ function collectionImageMirror(src){
   const parts=url.pathname.split('/').filter(Boolean);
   if(parts.length<4)return '';
   const [owner,repo,branch,...path]=parts;
-  if(!/^[\\w.-]+$/.test(owner)||!/^[\\w.-]+$/.test(repo)||!/^[\\w.-]+$/.test(branch))return '';
+  if(!/^[A-Za-z0-9_.-]+$/.test(owner)||!/^[A-Za-z0-9_.-]+$/.test(repo)||!/^[A-Za-z0-9_.-]+$/.test(branch))return '';
   return 'https://cdn.jsdelivr.net/gh/'+owner+'/'+repo+'@'+branch+'/'+path.join('/');
  }catch{return ''}
 }
