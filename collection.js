@@ -49,7 +49,7 @@ function collectionSinnerCounts(){
 }
 function renderCollection(){
  const grid=$('collectionGrid');if(!grid)return;
- const list=collectionRows();collectionStats();collectionSinnerCounts();
+ const list=collectionRows();collectionStats();collectionSinnerCounts();collectionExportUpdateSummary();
  const q=$('collectionSearch').value.trim().toLocaleLowerCase('ko'),rank=$('collectionRarity').value;
  const sl=collectionSinners(),order=new Map(sl.map((s,i)=>[s.id,i]));
  const matches=list.map((row,i)=>({...row,seq:i})).filter(row=>row.kind===collectionKind&&(collectionSinnerFilter==='all'||row.sinner===collectionSinnerFilter)&&(collectionOwnerFilter==='all'||collectionOwned(row)===(collectionOwnerFilter==='owned'))&&(!rank||String(row.rarity)===rank)&&(!q||(row.name+' '+(sl.find(s=>s.id===row.sinner)?.name||'')).toLocaleLowerCase('ko').includes(q)));
@@ -167,44 +167,93 @@ function collectionPictureCard(ctx,row,image,x,y,w,h,sinnerName){
  ctx.strokeStyle=border;ctx.lineWidth=2;
  collectionPictureRounded(ctx,x+1,y+1,w-2,h-2,10);ctx.stroke();
 }
+// 저장 체크박스는 화면의 인격/E.G.O 탭·등급 선택과 독립적으로 적용합니다.
+function collectionExportSelection(){
+ const allowedIdentity=$('collectionExportIdentity')?.checked===true;
+ const allowedEgo=$('collectionExportEgo')?.checked===true;
+ const ranks=new Set([1,2,3].filter(n=>$('collectionExportRank'+n)?.checked===true));
+ const sinner=collectionSinnerFilter;
+ const sinnerOrder=new Map(collectionSinners().map((s,i)=>[s.id,i]));
+ const selected=collectionRows().map((row,seq)=>({...row,seq})).filter(row=>
+  collectionOwned(row)&&(sinner==='all'||row.sinner===sinner)&&(
+   (allowedIdentity&&row.kind==='identity'&&ranks.has(Number(row.rarity)))||
+   (allowedEgo&&row.kind==='ego')
+  ));
+ const sort=(a,b)=>collectionOrder==='name'?a.name.localeCompare(b.name,'ko'):(sinnerOrder.get(a.sinner)-sinnerOrder.get(b.sinner))||(b.seq-a.seq);
+ return {
+  identities:selected.filter(row=>row.kind==='identity').sort(sort),
+  egos:selected.filter(row=>row.kind==='ego').sort(sort),
+  ranks:[...ranks].sort()
+ };
+}
+function collectionExportUpdateSummary(){
+ const identity=$('collectionExportIdentity');
+ if(!identity)return;
+ for(const n of [1,2,3]){
+  const box=$('collectionExportRank'+n);
+  if(box)box.disabled=!identity.checked;
+ }
+ const selection=collectionExportSelection();
+ const total=selection.identities.length+selection.egos.length;
+ const out=$('collectionExportSummary');
+ if(out)out.textContent='저장 예정 '+total+'종 · 인격 '+selection.identities.length+' · E.G.O '+selection.egos.length;
+}
 async function collectionDownloadOwnedPicture(){
  const button=$('collectionDownloadPicture');
  if(!button||button.disabled)return;
- const kind=collectionKind,filter=collectionSinnerFilter;
+ const {identities,egos,ranks}=collectionExportSelection();
+ const allRows=[...identities,...egos];
+ if(!allRows.length){toast('선택한 사진 저장 조건에 해당하는 보유 항목이 없습니다.');return}
+ const sinnerFilter=collectionSinnerFilter;
  const sinners=collectionSinners();
- const index=new Map(sinners.map((x,i)=>[x.id,i]));
- const rows=collectionRows().map((row,seq)=>({...row,seq})).filter(row=>
-  row.kind===kind&&collectionOwned(row)&&(filter==='all'||row.sinner===filter));
- if(!rows.length){toast('선택한 탭에 보유 중인 항목이 없습니다.');return}
- rows.sort((a,b)=>collectionOrder==='name'?a.name.localeCompare(b.name,'ko'):(index.get(a.sinner)-index.get(b.sinner))||(b.seq-a.seq));
  const old=button.textContent;
  button.disabled=true;button.textContent='사진 준비 중…';
  try{
-  const images=new Array(rows.length);let next=0,loaded=0;
-  const worker=async()=>{while(next<rows.length){
+  const images=new Array(allRows.length);let next=0,loaded=0;
+  const worker=async()=>{while(next<allRows.length){
    const i=next++;
-   images[i]=await collectionPictureImage(rows[i].image);
+   images[i]=await collectionPictureImage(allRows[i].image);
    loaded++;
-   if(loaded%8===0||loaded===rows.length)button.textContent='사진 준비 '+loaded+'/'+rows.length;
+   if(loaded%8===0||loaded===allRows.length)button.textContent='사진 준비 '+loaded+'/'+allRows.length;
   }};
-  await Promise.all(Array.from({length:Math.min(8,rows.length)},worker));
-  const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
+  await Promise.all(Array.from({length:Math.min(8,allRows.length)},()=>worker()));
+  const canvas=document.createElement('canvas');
+  const ctx=canvas.getContext('2d');
   if(!ctx)throw new Error('브라우저에서 이미지 캔버스를 지원하지 않습니다');
   const width=1120,pad=32,cols=6,gap=12,cardW=(width-pad*2-gap*(cols-1))/cols;
-  const tileH=kind==='identity'?Math.round(cardW*370/240):230;
-  const rowCount=Math.ceil(rows.length/cols),head=150,foot=45;
-  canvas.width=width;canvas.height=head+rowCount*(tileH+gap)+foot;
+  const sections=[
+   {kind:'identity',items:identities,title:'인격',height:Math.round(cardW*370/240)},
+   {kind:'ego',items:egos,title:'E.G.O',height:230}
+  ].filter(section=>section.items.length);
+  const sectionHeader=57,sectionBottom=14,head=143,footer=48;
+  canvas.width=width;
+  canvas.height=head+sections.reduce((sum,s)=>sum+sectionHeader+Math.ceil(s.items.length/cols)*(s.height+gap)+sectionBottom,0)+footer;
+  if(canvas.height>30000)throw new Error('보유 이미지가 너무 길어 저장할 수 없습니다. 수감자를 선택해 나눠 저장해 주세요');
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
   ctx.fillStyle='#0c1216';ctx.fillRect(0,0,width,canvas.height);
-  const sinner=filter==='all'?'전체':sinners.find(s=>s.id===filter)?.name||'전체';
+  const sinner=sinnerFilter==='all'?'전체':sinners.find(s=>s.id===sinnerFilter)?.name||'전체';
   ctx.fillStyle='#f0d5a3';ctx.font='900 31px "Malgun Gothic",sans-serif';ctx.textAlign='left';
-  ctx.fillText('LIMBUS COMPANY · 보유 '+(kind==='identity'?'인격':'E.G.O'),pad,63);
+  ctx.fillText('LIMBUS COMPANY · 보유 도감',pad,60);
   ctx.fillStyle='#adb8b7';ctx.font='16px "Malgun Gothic",sans-serif';
-  ctx.fillText(sinner+' · '+rows.length+'종 · 체크한 항목만',pad,96);
-  ctx.strokeStyle='#495254';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad,115);ctx.lineTo(width-pad,115);ctx.stroke();
-  for(let i=0;i<rows.length;i++){
-   const row=rows[i],x=pad+(i%cols)*(cardW+gap),y=head+Math.floor(i/cols)*(tileH+gap);
-   collectionPictureCard(ctx,row,images[i],x,y,cardW,tileH,sinners.find(s=>s.id===row.sinner)?.name||'');
+  ctx.fillText(sinner+' · 인격 '+identities.length+'종 · E.G.O '+egos.length+'종 · O 보유 항목만',pad,96);
+  ctx.strokeStyle='#495254';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad,114);ctx.lineTo(width-pad,114);ctx.stroke();
+  const loadedMap=new Map(allRows.map((row,i)=>[row.id,images[i]]));
+  let y=head;
+  for(const section of sections){
+   ctx.fillStyle='#edd39f';ctx.font='900 22px "Malgun Gothic",sans-serif';ctx.textAlign='left';
+   ctx.fillText(section.title+' · '+section.items.length+'종',pad,y+28);
+   if(section.kind==='identity'){
+    const marks=ranks.map(n=>'★'.repeat(n)).join(' / ');
+    ctx.fillStyle='#a3b1ad';ctx.font='13px "Malgun Gothic",sans-serif';
+    ctx.fillText('포함 등급: '+marks,pad+210,y+27);
+   }
+   ctx.strokeStyle='#3d4848';ctx.beginPath();ctx.moveTo(pad,y+43);ctx.lineTo(width-pad,y+43);ctx.stroke();
+   y+=sectionHeader;
+   for(let i=0;i<section.items.length;i++){
+    const row=section.items[i],x=pad+(i%cols)*(cardW+gap),cy=y+Math.floor(i/cols)*(section.height+gap);
+    collectionPictureCard(ctx,row,loadedMap.get(row.id),x,cy,cardW,section.height,sinners.find(s=>s.id===row.sinner)?.name||'');
+   }
+   y+=Math.ceil(section.items.length/cols)*(section.height+gap)+sectionBottom;
   }
   const failed=images.filter(img=>!img).length;
   ctx.fillStyle='#76878a';ctx.font='13px "Malgun Gothic",sans-serif';ctx.textAlign='left';
@@ -215,11 +264,13 @@ async function collectionDownloadOwnedPicture(){
   });
   const url=URL.createObjectURL(blob),link=document.createElement('a');
   const date=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'});
-  const filterPart=filter==='all'?'':('-'+filter);
-  link.href=url;link.download='limbus-owned-'+(kind==='identity'?'identity':'ego')+filterPart+'-'+date+'.png';
+  const mode=identities.length&&egos.length?'both':identities.length?'identity':'ego';
+  const filterPart=sinnerFilter==='all'?'':('-'+sinnerFilter);
+  const rankPart=identities.length?('-stars'+ranks.join('')):'';
+  link.href=url;link.download='limbus-owned-'+mode+rankPart+filterPart+'-'+date+'.png';
   document.body.appendChild(link);link.click();link.remove();
   setTimeout(()=>URL.revokeObjectURL(url),20000);
-  toast(failed?('PNG 저장 완료 · 이미지 '+failed+'개 연결 실패(빈 칸으로 표시)'):'보유 중인 '+rows.length+'종을 PNG로 저장했습니다.');
+  toast(failed?('PNG 저장 완료 · 이미지 '+failed+'개 연결 실패(빈 칸으로 표시)'):'보유 중인 '+allRows.length+'종을 PNG로 저장했습니다.');
  }catch(e){
   console.error('보유 사진 저장 실패',e);
   toast('사진 저장 실패: '+(e?.message||'브라우저 이미지 제한을 확인해 주세요'));
@@ -227,7 +278,6 @@ async function collectionDownloadOwnedPicture(){
   button.disabled=false;button.textContent=old;
  }
 }
-
 async function collectionSave(){await action('meta','put',{id:'collectionOwnedV1',values:state.collectionOwned||{}})}
 function wireCollection(){
  const sinners=collectionSinners();
@@ -264,6 +314,9 @@ function wireCollection(){
   try{await collectionSave()}catch(err){console.error(err);toast('보유 상태 저장 실패: 다시 확인해 주세요')}
  });
  $('collectionClearFilters').addEventListener('click',()=>{collectionSinnerFilter='all';collectionOwnerFilter='all';collectionOrder='sinner';$('collectionSearch').value='';$('collectionRarity').value='';$('collectionSort').value='sinner';renderCollection()});
+ for(const id of ['collectionExportIdentity','collectionExportEgo','collectionExportRank1','collectionExportRank2','collectionExportRank3']){
+  $(id).addEventListener('change',collectionExportUpdateSummary);
+ }
  $('collectionDownloadPicture').addEventListener('click',collectionDownloadOwnedPicture);
  $('collectionCopy').addEventListener('click',async()=>{
   const rows=collectionRows().filter(r=>collectionOwned(r)&&!r.base),sinners=collectionSinners();
