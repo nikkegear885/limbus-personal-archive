@@ -339,10 +339,15 @@ async function collectionDownloadOwnedPicture(){
    {kind:'ego',items:egos,title:'E.G.O',height:egoHeight}
   ].filter(section=>section.items.length);
   const sectionHeader=57,sectionBottom=14,head=143,footer=48;
-  const groupBreak=44,mixedGap=16;
-  const groupContentHeight=group=>Math.ceil(group.identities.length/cols)*(identityHeight+gap)+
+  // 수감자 사이에는 1px 선이 들어갈 최소한의 공간만 유지합니다.
+  const groupBreak=5,mixedGap=3;
+  const groupedBlockHeight=(items,height)=>{
+   const count=Math.ceil(items.length/cols);
+   return count?count*height+(count-1)*gap:0;
+  };
+  const groupContentHeight=group=>groupedBlockHeight(group.identities,identityHeight)+
    (group.identities.length&&group.egos.length?mixedGap:0)+
-   Math.ceil(group.egos.length/cols)*(egoHeight+gap);
+   groupedBlockHeight(group.egos,egoHeight);
   const contentHeight=grouped?
    groups.reduce((sum,group,i)=>sum+(i?groupBreak:0)+groupContentHeight(group),0)+sectionBottom:
    sections.reduce((sum,section)=>sum+sectionHeader+Math.ceil(section.items.length/cols)*(section.height+gap)+sectionBottom,0);
@@ -365,8 +370,8 @@ async function collectionDownloadOwnedPicture(){
    for(let g=0;g<groups.length;g++){
     const group=groups[g];
     if(g>0){
-     const dividerY=y+groupBreak/2-4;
-     ctx.strokeStyle='#62716c';ctx.lineWidth=2;
+     const dividerY=y+groupBreak/2;
+     ctx.strokeStyle='#62716c';ctx.lineWidth=1;
      ctx.beginPath();ctx.moveTo(pad+12,dividerY);ctx.lineTo(width-pad-12,dividerY);ctx.stroke();
      y+=groupBreak;
     }
@@ -375,14 +380,14 @@ async function collectionDownloadOwnedPicture(){
      const cy=y+Math.floor(i/cols)*(identityHeight+gap);
      collectionPictureCard(ctx,row,loadedMap.get(row.id),x,cy,cardW,identityHeight,'',factor);
     }
-    y+=Math.ceil(group.identities.length/cols)*(identityHeight+gap);
+    y+=groupedBlockHeight(group.identities,identityHeight);
     if(group.identities.length&&group.egos.length)y+=mixedGap;
     for(let i=0;i<group.egos.length;i++){
      const row=group.egos[i],x=pad+(i%cols)*(cardW+gap);
      const cy=y+Math.floor(i/cols)*(egoHeight+gap);
      collectionPictureCard(ctx,row,loadedMap.get(row.id),x,cy,cardW,egoHeight,'',factor);
     }
-    y+=Math.ceil(group.egos.length/cols)*(egoHeight+gap);
+    y+=groupedBlockHeight(group.egos,egoHeight);
    }
   }else{
    // 구분 끔: 기존 인격/E.G.O 구역별 저장 방식을 유지합니다.
