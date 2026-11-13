@@ -85,7 +85,7 @@ function collectionPictureWrapWords(ctx,value,maxWidth){
   if(fits(joined)){line=joined;continue}
   flush();
   if(fits(word)){line=word;continue}
-  const parts=word.split(/(?<=::)|(?<=\/)|(?<=-)/u).filter(Boolean);
+  const parts=word.split(/(?=::)|(?<=::)|(?=〖)|(?=・)|(?<=・)|(?=\/)|(?<=\/)|(?=-)|(?<=-)/u).filter(Boolean);
   for(const part of parts){
    if(fits(line+part)){line+=part;continue}
    flush();
