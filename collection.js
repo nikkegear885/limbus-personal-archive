@@ -201,9 +201,9 @@ function collectionExportSinnerGroups(identities,egos,sinners){
   egos:egos.filter(row=>row.sinner===s.id)
  })).filter(group=>group.identities.length||group.egos.length);
 }
-// 뫼르소까지 왼쪽, 홍루부터 오른쪽. 카탈로그 순서가 바뀌어도 수감자 ID로 분리합니다.
+// 홍루까지 왼쪽, 히스클리프부터 오른쪽. 카탈로그 순서가 바뀌어도 수감자 ID로 분리합니다.
 function collectionExportSplitSinnerGroups(groups){
- const leftIds=new Set(['yisang','faust','don','ryoshu','meursault']);
+ const leftIds=new Set(['yisang','faust','don','ryoshu','meursault','honglu']);
  return [
   groups.filter(group=>leftIds.has(group.sinner)),
   groups.filter(group=>!leftIds.has(group.sinner))
@@ -392,7 +392,7 @@ async function collectionDownloadOwnedPicture(){
   const loadedMap=new Map(allRows.map((row,i)=>[row.id,images[i]]));
   let y=head;
   if(splitSides){
-   // 같은 PNG의 왼쪽: 이상·파우스트·돈키호테·료슈·뫼르소 / 오른쪽: 나머지 수감자.
+   // 같은 PNG의 왼쪽: 이상·파우스트·돈키호테·료슈·뫼르소·홍루 / 오른쪽: 히스클리프부터 그레고르.
    // 두 영역은 독립적인 높이로 쌓으며, 영역 내부 수감자 사이는 기존처럼 5px만 띄웁니다.
    const centerX=width/2;
    ctx.strokeStyle='#4c5c59';ctx.lineWidth=1;
