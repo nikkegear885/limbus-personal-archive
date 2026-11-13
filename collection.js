@@ -77,7 +77,7 @@ function renderCollection(){
   if(row.kind==='identity'){
    return '<button type="button" class="collection-card identity-card rarity-'+row.rarity+(owned?' owned':'')+'"'+attributes+'><span class="collection-image">'+pic+'<span class="collection-card-grade">'+esc('★'.repeat(row.rarity))+'</span><span class="collection-owned-mark">'+(owned?'O':'')+'</span><span class="collection-name-overlay">'+esc(row.name)+'</span></span></button>';
   }
-  return '<button type="button" class="collection-card ego-card ego-rank-'+esc(String(row.rarity).toLowerCase())+(owned?' owned':'')+'"'+attributes+'><span class="collection-ego-wrap"><span class="collection-image collection-ego-circle">'+pic+'<span class="collection-owned-mark">'+(owned?'O':'')+'</span><span class="collection-ego-name">'+esc(row.name)+'</span></span></span><span class="collection-ego-meta">'+esc(row.rarity)+' · '+esc(sinner)+'</span></button>';
+  return '<button type="button" class="collection-card ego-card ego-rank-'+esc(String(row.rarity).toLowerCase())+(owned?' owned':'')+'"'+attributes+'><span class="collection-ego-wrap"><span class="collection-image collection-ego-circle">'+pic+'<span class="collection-owned-mark">'+(owned?'O':'')+'</span><span class="collection-ego-name">'+esc(row.name)+'</span></span></span></button>';
  }).join(''):'<div class="collection-empty">조건에 맞는 항목이 없습니다. 필터를 초기화해 보세요.</div>';
  document.querySelectorAll('[data-collection-kind]').forEach(b=>b.classList.toggle('selected',b.dataset.collectionKind===collectionKind));
  document.querySelectorAll('[data-collection-owner]').forEach(b=>b.classList.toggle('selected',b.dataset.collectionOwner===collectionOwnerFilter));
@@ -143,7 +143,7 @@ function collectionPictureGridLayout(ctx,items,columns,cardW,gap,factor,cropPerc
    const identity=row.kind==='identity';
    const title=collectionPictureTitleLayout(ctx,row,cardW,factor,cropPercent);
    const height=identity?
-    Math.round(cardW*370/240*(1-cropPercent/100)):Math.round(176*factor);
+    Math.round(cardW*370/240*(1-cropPercent/100)):Math.round(150*factor);
    return {row,x:i*(cardW+gap),title,height};
   });
   const rowHeight=Math.max(...rowCells.map(item=>item.height));
@@ -192,12 +192,13 @@ function collectionPictureCard(ctx,row,image,x,y,w,h,sinnerName,cardScale=1,crop
   ctx.restore();return;
  }
  const identity=row.kind==='identity';
- const border=identity?(row.rarity===3?'#d4a750':row.rarity===2?'#b14537':'#8b785a'):'#786447';
+ const border=identity?(row.rarity===3?'#d4a750':row.rarity===2?'#b14537':'#8b785a'):null;
  const title=titleLayout||collectionPictureTitleLayout(ctx,row,w,1,cropPercent);
  ctx.save();
- collectionPictureRounded(ctx,x,y,w,h,11);ctx.fillStyle='#151b20';ctx.fill();
- ctx.clip();
  if(identity){
+  // 인격에만 네모 카드와 테두리를 적용합니다. E.G.O는 원형 사진만 남깁니다.
+  collectionPictureRounded(ctx,x,y,w,h,11);ctx.fillStyle='#151b20';ctx.fill();
+  ctx.clip();
   if(image){
    const fullArtworkHeight=h/(1-cropPercent/100);
    collectionPictureDrawCover(ctx,image,x+2,y+2,w-4,fullArtworkHeight-4,row.imagePosition);
@@ -215,9 +216,6 @@ function collectionPictureCard(ctx,row,image,x,y,w,h,sinnerName,cardScale=1,crop
    ctx.textAlign='center';ctx.fillText('이미지 연결 실패',cx,cy);
   }
   ctx.restore();
-  ctx.beginPath();ctx.arc(cx,cy,r+1,0,Math.PI*2);
-  ctx.strokeStyle=({ZAYIN:'#99764c',TETH:'#c17e3c',HE:'#9f61bc',WAW:'#d36c45',ALEPH:'#dc4545'})[row.rarity]||'#a17b4e';
-  ctx.lineWidth=4;ctx.stroke();
  }
  const titleHeight=title.lines.length*title.lineHeight;
  // 인격은 카드 하단, E.G.O는 원형 사진의 하단에 이름을 겹쳐 그립니다.
@@ -243,13 +241,12 @@ function collectionPictureCard(ctx,row,image,x,y,w,h,sinnerName,cardScale=1,crop
   ctx.textAlign='left';ctx.font='900 16px "Malgun Gothic",sans-serif';
   ctx.fillStyle='#ffdb75';ctx.shadowColor='#000';ctx.shadowBlur=3;
   ctx.fillText('★'.repeat(row.rarity),x+8,y+19);ctx.shadowBlur=0;
- }else{
-  ctx.textAlign='center';ctx.fillStyle='#aab3b8';ctx.font='11px "Malgun Gothic",sans-serif';
-  ctx.fillText(row.rarity+(sinnerName?' · '+sinnerName:''),x+w/2,y+h-7);
  }
  ctx.restore();
- ctx.strokeStyle=border;ctx.lineWidth=2;
- collectionPictureRounded(ctx,x+1,y+1,w-2,h-2,10);ctx.stroke();
+ if(identity){
+  ctx.strokeStyle=border;ctx.lineWidth=2;
+  collectionPictureRounded(ctx,x+1,y+1,w-2,h-2,10);ctx.stroke();
+ }
 }
 // 저장 체크박스는 화면의 인격/E.G.O 탭·등급 선택과 독립적으로 적용합니다.
 function collectionExportSelection(){
