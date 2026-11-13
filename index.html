@@ -71,7 +71,7 @@
 .collection-card.identity-card{border:2px solid #8b785a;border-radius:13px}
 .collection-card.identity-card.rarity-2{border-color:#b14537}
 .collection-card.identity-card.rarity-3{border-color:#d4a750}
-.identity-card .collection-image{aspect-ratio:240/350}
+.identity-card .collection-image{aspect-ratio:240/370}
 .collection-name-overlay{position:absolute;left:0;right:0;bottom:0;z-index:2;display:flex;align-items:flex-end;justify-content:center;min-height:70px;padding:31px 8px 10px;text-align:center;line-height:1.3;font-weight:900;font-size:13px;letter-spacing:-.2px;overflow-wrap:anywhere;color:#ffd04d;text-shadow:1px 2px 2px #000,-1px -1px 3px #000,0 0 7px #000;background:linear-gradient(to top,#000e 0%,#0009 48%,transparent 100%)}
 .collection-card.identity-card.rarity-1 .collection-name-overlay{color:#f2c76d}
 .collection-card.identity-card.rarity-2 .collection-name-overlay{color:#ffbf4d}
@@ -144,8 +144,8 @@
 <div class="overlay" id="runOverlay"><div class="dialog" style="max-width:560px" role="dialog" aria-modal="true"><div class="dialog-head"><h2>거울던전 회차 편집</h2><button class="btn small quiet" id="runEditClose">✕ 닫기</button></div><div class="dialog-body"><div class="form-grid"><div class="field wide"><label for="runName">회차 이름</label><input id="runName" placeholder="예: 3회차 · 호흡 테스트"></div><div class="field wide"><label for="runStartAt">시작 시각</label><input id="runStartAt" type="datetime-local" step="1"></div><div class="field"><label for="runFloor3">3층 클리어</label><input id="runFloor3" type="datetime-local" step="1"></div><div class="field"><label for="runFloor4">4층 시작</label><input id="runFloor4" type="datetime-local" step="1"></div><div class="field wide"><label for="runFloor5">5층 클리어</label><input id="runFloor5" type="datetime-local" step="1"></div><div class="field wide"><label for="runMemo">메모</label><textarea id="runMemo" rows="3" placeholder="사용한 덱, 기프트, 실패 원인 등을 적어두세요"></textarea><small>비워 둔 단계는 '기록 없음'으로 표시됩니다.</small></div></div></div><div class="dialog-foot"><button class="btn quiet" id="runEditCancel">취소</button><button class="btn primary" id="runEditSave">저장</button></div></div></div>
 <div class="image-lightbox" id="lightbox"><img id="lightboxImg" alt="확대 이미지"></div>
 <input type="file" id="photoInput" accept="image/*" multiple hidden><input type="file" id="restoreInput" accept="application/json,.json" hidden>
-<script src="collection-data.js?v=20261113-ego-117fix"></script>
-<script src="collection.js?v=20261113-ego-117fix"></script>
+<script src="collection-data.js?v=20261113-portrait-align1"></script>
+<script src="collection.js?v=20261113-portrait-align1"></script>
 <script>
 'use strict';
 const CATEGORIES=['거울던전','E.G.O 기프트','덱·인격','테마팩','스토리','기타'];
