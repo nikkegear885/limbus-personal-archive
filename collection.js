@@ -275,6 +275,39 @@ function collectionExportUpdateSummary(){
  const out=$('collectionExportSummary');
  if(out)out.textContent='저장 예정 '+total+'종 · 인격 '+selection.identities.length+' · E.G.O '+selection.egos.length;
 }
+// 내보낼 PNG를 실제 저장 전에 보여줍니다. 취소하면 로컬 미리보기만 폐기합니다.
+const collectionPreviewState={url:'',filename:''};
+function collectionPreviewClose(download=false){
+ const modal=$('collectionPreviewModal');
+ if(!modal||modal.hidden)return;
+ const url=collectionPreviewState.url,filename=collectionPreviewState.filename;
+ modal.hidden=true;
+ $('collectionPreviewImage').removeAttribute('src');
+ collectionPreviewState.url='';
+ collectionPreviewState.filename='';
+ if(download&&url&&filename){
+  const link=document.createElement('a');
+  link.href=url;link.download=filename;
+  document.body.appendChild(link);link.click();link.remove();
+  // 브라우저 다운로드가 URL을 읽을 시간을 보장합니다.
+  setTimeout(()=>URL.revokeObjectURL(url),20000);
+  toast('PNG 저장을 시작했습니다.');
+ }else if(url){
+  URL.revokeObjectURL(url);
+ }
+ $('collectionDownloadPicture')?.focus();
+}
+function collectionPreviewOpen(blob,filename,meta){
+ collectionPreviewClose();
+ const url=URL.createObjectURL(blob);
+ collectionPreviewState.url=url;
+ collectionPreviewState.filename=filename;
+ $('collectionPreviewImage').src=url;
+ $('collectionPreviewMeta').textContent=meta;
+ $('collectionPreviewModal').hidden=false;
+ $('collectionPreviewClose').focus();
+}
+
 async function collectionDownloadOwnedPicture(){
  const button=$('collectionDownloadPicture');
  if(!button||button.disabled)return;
@@ -377,15 +410,15 @@ async function collectionDownloadOwnedPicture(){
    try{canvas.toBlob(b=>b?resolve(b):reject(new Error('PNG 파일 생성에 실패했습니다')),'image/png')}
    catch(e){reject(e)}
   });
-  const url=URL.createObjectURL(blob),link=document.createElement('a');
   const date=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'});
   const mode=identities.length&&egos.length?'both':identities.length?'identity':'ego';
   const filterPart=sinnerFilter==='all'?'':('-'+sinnerFilter);
   const rankPart=identities.length?('-stars'+ranks.join('')):'';
-  link.href=url;link.download='limbus-owned-'+mode+rankPart+filterPart+'-'+date+'.png';
-  document.body.appendChild(link);link.click();link.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),20000);
-  toast(failed?('PNG 저장 완료 · 이미지 '+failed+'개 연결 실패(빈 칸으로 표시)'):'보유 중인 '+allRows.length+'종을 PNG로 저장했습니다.');
+  const filename='limbus-owned-'+mode+rankPart+filterPart+'-'+date+'.png';
+  const fileSize=(blob.size/1024/1024).toFixed(1);
+  const meta='총 '+allRows.length+'종 · 인격 '+identities.length+'종 · E.G.O '+egos.length+'종 · '+canvas.width+'×'+canvas.height+'px · '+fileSize+'MB'+(failed?' · 사진 '+failed+'장 연결 실패':'');
+  collectionPreviewOpen(blob,filename,meta);
+  if(failed)toast('사진 '+failed+'장이 연결되지 않았습니다. 미리보기를 확인해 주세요.');
  }catch(e){
   console.error('보유 사진 저장 실패',e);
   toast('사진 저장 실패: '+(e?.message||'브라우저 이미지 제한을 확인해 주세요'));
@@ -436,6 +469,15 @@ function wireCollection(){
   $(id).addEventListener('change',collectionExportSettingsChanged);
  }
  $('collectionDownloadPicture').addEventListener('click',collectionDownloadOwnedPicture);
+ $('collectionPreviewClose').addEventListener('click',()=>collectionPreviewClose());
+ $('collectionPreviewCancel').addEventListener('click',()=>collectionPreviewClose());
+ $('collectionPreviewSave').addEventListener('click',()=>collectionPreviewClose(true));
+ $('collectionPreviewModal').addEventListener('click',e=>{if(e.target===$('collectionPreviewModal'))collectionPreviewClose()});
+ window.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&!$('collectionPreviewModal').hidden){
+   e.preventDefault();collectionPreviewClose();
+  }
+ });
  $('collectionCopy').addEventListener('click',async()=>{
   const rows=collectionRows().filter(r=>collectionOwned(r)&&!r.base),sinners=collectionSinners();
   const txt='림버스 컴퍼니 보유 목록\n인격 '+collectionRows().filter(r=>r.kind==='identity'&&collectionOwned(r)).length+' / 195 · E.G.O '+collectionRows().filter(r=>r.kind==='ego'&&collectionOwned(r)).length+' / 117\n\n'+sinners.map(s=>s.name+'\n'+rows.filter(r=>r.sinner===s.id).map(r=>'- ['+(r.kind==='identity'?'인격':'E.G.O')+'] '+r.name).join('\n')).join('\n\n');
