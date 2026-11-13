@@ -87,18 +87,13 @@
 .collection-card.identity-card.rarity-1 .collection-name-overlay{color:#f2c76d}
 .collection-card.identity-card.rarity-2 .collection-name-overlay{color:#ffbf4d}
 .collection-card.identity-card.rarity-3 .collection-name-overlay{color:#ffdf66}
-.collection-card.ego-card{padding:10px 7px 12px;background:#10161a;border-color:#3c393a;align-items:center;gap:4px;border-radius:13px}
-.collection-card.ego-card.owned{border-color:#b7925e}
-.collection-ego-wrap{width:100%;display:flex;justify-content:center;padding:3px 4px 2px}
-.collection-ego-circle{width:min(100%,144px);height:auto;aspect-ratio:1/1;flex-shrink:0;border-radius:50%;border:3px solid #a17b4e;box-shadow:0 0 0 2px #1b1715,0 3px 12px #0009;background:#181b20}
+.collection-card.ego-card{padding:2px 0;background:transparent;border:0;align-items:center;gap:0;border-radius:0;box-shadow:none}
+.collection-card.ego-card.owned{border:0;box-shadow:none}
+.collection-card.ego-card:not(:disabled):hover{background:transparent;border:0;box-shadow:none;transform:none}
+.collection-ego-wrap{width:100%;display:flex;justify-content:center;padding:0}
+.collection-ego-circle{width:min(100%,144px);height:auto;aspect-ratio:1/1;flex-shrink:0;border-radius:50%;border:0;box-shadow:none;background:transparent}
 .collection-ego-circle img{object-fit:cover;border-radius:50%}
-.ego-card.ego-rank-zayin .collection-ego-circle{border-color:#99764c}
-.ego-card.ego-rank-teth .collection-ego-circle{border-color:#c17e3c}
-.ego-card.ego-rank-he .collection-ego-circle{border-color:#9f61bc}
-.ego-card.ego-rank-waw .collection-ego-circle{border-color:#d36c45}
-.ego-card.ego-rank-aleph .collection-ego-circle{border-color:#dc4545}
 .collection-ego-circle .collection-ego-name{position:absolute;z-index:2;left:0;right:0;bottom:0;display:flex;align-items:flex-end;justify-content:center;width:100%;min-height:40%;max-height:80%;padding:24px 6px 10px;background:linear-gradient(180deg,transparent 0%,#0008 43%,#000e 100%);color:#ffda70;text-align:center;font-size:10.5px;font-weight:850;line-height:1.15;word-break:keep-all;overflow-wrap:anywhere;text-shadow:0 1px 3px #000;pointer-events:none}
-.collection-ego-meta{display:block;width:100%;color:#9fa8aa;font-size:10px;text-align:center}
 .collection-ego-circle .collection-owned-mark{top:5px;right:4px}
 .collection-empty{grid-column:1/-1;border:1px dashed #516066;padding:50px 12px;text-align:center;border-radius:12px;color:var(--muted)}
 
@@ -122,7 +117,7 @@
 #collectionExportSummary{color:#f2d39a;font-weight:780}
 @media(max-width:570px){.collection-export-panel{padding:11px 9px}.collection-export-line{gap:6px}.collection-export-separator{width:100%;height:1px;margin:4px 0}.collection-export-check{font-size:11px;padding:7px 8px}}
 .collection-footnote{font-size:11px;color:#8c9e9f;line-height:1.75;margin-top:20px}
-@media(max-width:570px){.collection-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.collection-topstats{grid-template-columns:repeat(2,minmax(0,1fr))}.collection-filter{padding:7px 9px;font-size:11px}.collection-name-overlay{min-height:60px;font-size:10.5px;padding:28px 5px 7px}.collection-card-grade{font-size:11px;top:5px;left:5px}.collection-owned-mark{width:24px;height:24px;top:5px;right:5px;font-size:14px}.collection-card.ego-card{padding:7px 4px 10px}.collection-ego-circle{width:min(100%,115px)}.collection-ego-name{font-size:11px}}
+@media(max-width:570px){.collection-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.collection-topstats{grid-template-columns:repeat(2,minmax(0,1fr))}.collection-filter{padding:7px 9px;font-size:11px}.collection-name-overlay{min-height:60px;font-size:10.5px;padding:28px 5px 7px}.collection-card-grade{font-size:11px;top:5px;left:5px}.collection-owned-mark{width:24px;height:24px;top:5px;right:5px;font-size:14px}.collection-card.ego-card{padding:2px 0}.collection-ego-circle{width:min(100%,115px)}.collection-ego-name{font-size:11px}}
 
 .collection-preview-modal[hidden]{display:none}
 .collection-preview-modal{position:fixed;inset:0;z-index:1100;background:#050a0de8;display:flex;align-items:center;justify-content:center;padding:clamp(8px,2vw,24px)}
@@ -205,8 +200,8 @@
   </div>
 </div>
 <input type="file" id="photoInput" accept="image/*" multiple hidden><input type="file" id="restoreInput" accept="application/json,.json" hidden>
-<script src="collection-data.js?v=20261113-ego-name-inside1"></script>
-<script src="collection.js?v=20261113-ego-name-inside1"></script>
+<script src="collection-data.js?v=20261113-ego-circle-only1"></script>
+<script src="collection.js?v=20261113-ego-circle-only1"></script>
 <script>
 'use strict';
 const CATEGORIES=['거울던전','E.G.O 기프트','덱·인격','테마팩','스토리','기타'];
