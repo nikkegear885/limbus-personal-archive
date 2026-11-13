@@ -23,9 +23,33 @@ function collectionImageMirror(src){
   return 'https://cdn.jsdelivr.net/gh/'+owner+'/'+repo+'@'+branch+'/'+path.join('/');
  }catch{return ''}
 }
+function collectionSinnerCounts(){
+ const counts=new Map([['all',{identity:[0,0],ego:[0,0]}],...collectionSinners().map(s=>[s.id,{identity:[0,0],ego:[0,0]}])]);
+ for(const row of collectionRows()){
+  if(row.kind!=='identity'&&row.kind!=='ego')continue;
+  const owned=collectionOwned(row);
+  const global=counts.get('all')[row.kind],sinner=counts.get(row.sinner)?.[row.kind];
+  global[1]++;if(owned)global[0]++;
+  if(sinner){sinner[1]++;if(owned)sinner[0]++}
+ }
+ for(const button of document.querySelectorAll('#collectionSinnerTabs [data-collection-sinner]')){
+  const countsFor=counts.get(button.dataset.collectionSinner);
+  if(!countsFor)continue;
+  const [identityOwned,identityTotal]=countsFor.identity;
+  const [egoOwned,egoTotal]=countsFor.ego;
+  const idText='인격 '+identityOwned+'/'+identityTotal;
+  const egoText='E.G.O '+egoOwned+'/'+egoTotal;
+  const idLabel=button.querySelector('[data-collection-count="identity"]');
+  const egoLabel=button.querySelector('[data-collection-count="ego"]');
+  if(idLabel)idLabel.textContent=idText;
+  if(egoLabel)egoLabel.textContent=egoText;
+  button.title=button.dataset.collectionSinner==='all'?'전체 · '+idText+' · '+egoText:
+   (collectionSinners().find(x=>x.id===button.dataset.collectionSinner)?.name||'')+' · '+idText+' · '+egoText;
+ }
+}
 function renderCollection(){
  const grid=$('collectionGrid');if(!grid)return;
- const list=collectionRows();collectionStats();
+ const list=collectionRows();collectionStats();collectionSinnerCounts();
  const q=$('collectionSearch').value.trim().toLocaleLowerCase('ko'),rank=$('collectionRarity').value;
  const sl=collectionSinners(),order=new Map(sl.map((s,i)=>[s.id,i]));
  const matches=list.map((row,i)=>({...row,seq:i})).filter(row=>row.kind===collectionKind&&(collectionSinnerFilter==='all'||row.sinner===collectionSinnerFilter)&&(collectionOwnerFilter==='all'||collectionOwned(row)===(collectionOwnerFilter==='owned'))&&(!rank||String(row.rarity)===rank)&&(!q||(row.name+' '+(sl.find(s=>s.id===row.sinner)?.name||'')).toLocaleLowerCase('ko').includes(q)));
@@ -207,7 +231,8 @@ async function collectionDownloadOwnedPicture(){
 async function collectionSave(){await action('meta','put',{id:'collectionOwnedV1',values:state.collectionOwned||{}})}
 function wireCollection(){
  const sinners=collectionSinners();
- $('collectionSinnerTabs').innerHTML='<button class="collection-filter selected" data-collection-sinner="all">전체</button>'+sinners.map(s=>'<button class="collection-filter" data-collection-sinner="'+esc(s.id)+'">'+esc(s.name)+'</button>').join('');
+ const sinnerTab=(id,name,selected)=>'<button type="button" class="collection-filter collection-sinner-tab'+(selected?' selected':'')+'" data-collection-sinner="'+esc(id)+'"><span class="collection-sinner-name">'+esc(name)+'</span><span class="collection-sinner-count"><span data-collection-count="identity">인격 0/0</span><span data-collection-count="ego">E.G.O 0/0</span></span></button>';
+ $('collectionSinnerTabs').innerHTML=sinnerTab('all','전체',true)+sinners.map(s=>sinnerTab(s.id,s.name,false)).join('');
  $('collectionSinnerTabs').addEventListener('click',e=>{const b=e.target.closest('button[data-collection-sinner]');if(!b)return;collectionSinnerFilter=b.dataset.collectionSinner;renderCollection()});
  $('collectionMode').addEventListener('click',e=>{const b=e.target.closest('button[data-collection-kind]');if(!b)return;collectionKind=b.dataset.collectionKind;$('collectionRarity').innerHTML=collectionKind==='identity'?'<option value="">전체 등급</option><option value="3">3성</option><option value="2">2성</option><option value="1">1성</option>':'<option value="">전체 등급</option><option>ZAYIN</option><option>TETH</option><option>HE</option><option>WAW</option><option>ALEPH</option>';$('collectionRarity').value='';renderCollection()});
  $('collectionOwnershipFilters').addEventListener('click',e=>{const b=e.target.closest('button[data-collection-owner]');if(!b)return;collectionOwnerFilter=b.dataset.collectionOwner;renderCollection()});
