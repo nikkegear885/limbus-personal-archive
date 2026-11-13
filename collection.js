@@ -431,6 +431,14 @@ async function collectionDownloadOwnedPicture(){
   const vertical=$('collectionExportVertical')?.checked===true;
   const grouped=vertical||$('collectionExportGroupBySinner')?.checked!==false;
   const splitSides=grouped&&!vertical&&$('collectionExportSplitSides')?.checked===true;
+  // 가로 저장은 그룹 시작 부분에 수감자 로고+이름 전용 열을 둡니다.
+  const horizontalLabels=grouped&&!vertical;
+  const horizontalLabelWidth=horizontalLabels?Math.max(60,Math.min(96,Math.round(cardW*.66))):0;
+  const horizontalLabelGap=horizontalLabels?8:0;
+  const horizontalLabelOffset=horizontalLabelWidth+horizontalLabelGap;
+  const horizontalLogoSize=horizontalLabels?Math.min(horizontalLabelWidth-10,Math.max(30,Math.round(54*factor))):0;
+  const horizontalLabelFont=horizontalLabels?Math.max(11,Math.round(19*factor)):0;
+  const horizontalLabelHeight=horizontalLabels?6+horizontalLogoSize+4+horizontalLabelFont+8:0;
   const layoutCols=vertical?1:cols;
   const cropPercent=Number($('collectionExportCropPercent').value)||0;
   const groups=grouped?collectionExportSinnerGroups(identities,egos,sinners):[];
@@ -443,13 +451,15 @@ async function collectionDownloadOwnedPicture(){
    return maxItems?Math.min(maxSideCols,maxItems):0;
   });
   const sideWidths=sideColumnCounts.map(count=>count?count*cardW+(count-1)*gap:0);
+  const sideLabelWidths=sideWidths.map(w=>w?horizontalLabelOffset:0);
   const sideGap=sideWidths.length===2&&sideWidths[0]&&sideWidths[1]?8:0;
   // 수감자마다 카드 1열을 할당하고, 각 열을 한 장에 가로로 나란히 배치합니다.
   const sinnerColumnGap=8;
   const verticalGroups=vertical?groups:[];
   const exportWidth=vertical?Math.ceil(pad*2+verticalGroups.length*cardW+Math.max(0,verticalGroups.length-1)*sinnerColumnGap):
-   splitSides?Math.ceil(pad*2+sideWidths.reduce((sum,w)=>sum+w,0)+sideGap):width;
-  const sidePositions=[pad,pad+(sideWidths[0]||0)+sideGap];
+   splitSides?Math.ceil(pad*2+sideWidths.reduce((sum,w)=>sum+w,0)+sideLabelWidths.reduce((sum,w)=>sum+w,0)+sideGap):
+   grouped?width+horizontalLabelOffset:width;
+  const sidePositions=[pad,pad+(sideWidths[0]||0)+(sideLabelWidths[0]||0)+sideGap];
   const sections=[
    {kind:'identity',items:identities},
    {kind:'ego',items:egos}
@@ -469,9 +479,10 @@ async function collectionDownloadOwnedPicture(){
    if(!cache.has(actualCols))cache.set(actualCols,collectionPictureGridLayout(ctx,items,actualCols,cardW,gap,factor,cropPercent));
    return cache.get(actualCols);
   };
-  const groupHeight=(group,columnCount)=>getLayout(group.identities,columnCount).height+
+  const groupHeight=(group,columnCount)=>Math.max(horizontalLabelHeight,
+   getLayout(group.identities,columnCount).height+
    (group.identities.length&&group.egos.length?mixedGap:0)+
-   getLayout(group.egos,columnCount).height;
+   getLayout(group.egos,columnCount).height);
   const groupsHeight=(items,columnCount)=>items.reduce((sum,group,i)=>sum+(i?groupBreak:0)+groupHeight(group,columnCount),0);
   const contentHeight=vertical?
    Math.max(...verticalGroups.map(group=>groupHeight(group,1))):
@@ -492,7 +503,7 @@ async function collectionDownloadOwnedPicture(){
   const loadedMap=new Map(allRows.map((row,i)=>[row.id,images[i]]));
   // PNG의 심볼은 캔버스 렌더링 전에 완전히 불러와 내보낸 이미지에도 포함시킵니다.
   const sinnerLogoImages=new Map();
-  if(vertical)await Promise.all(verticalGroups.map(async group=>{
+  if(grouped)await Promise.all(groups.map(async group=>{
    const logo=await collectionPictureImage(collectionSinnerLogoURL(group.sinner))||
     await collectionPictureImage(collectionSinnerLogoFallbackURL(group.sinner));
    if(logo)sinnerLogoImages.set(group.sinner,logo);
@@ -505,9 +516,39 @@ async function collectionDownloadOwnedPicture(){
    }
    return current.height;
   };
+  const sinnerNames=new Map(sinners.map(s=>[s.id,s.name]));
+  const drawHorizontalSinnerLabel=(group,x,y)=>{
+   if(!horizontalLabels)return;
+   const logo=sinnerLogoImages.get(group.sinner);
+   const name=sinnerNames.get(group.sinner)||group.sinner;
+   ctx.save();
+   if(logo){
+    const iw=logo.naturalWidth||logo.width,ih=logo.naturalHeight||logo.height;
+    const scale=Math.min(horizontalLogoSize/iw,horizontalLogoSize/ih);
+    const dw=iw*scale,dh=ih*scale;
+    ctx.drawImage(logo,x+(horizontalLabelWidth-dw)/2,y+6+(horizontalLogoSize-dh)/2,dw,dh);
+   }
+   let fontSize=horizontalLabelFont;
+   ctx.textAlign='center';ctx.textBaseline='top';
+   ctx.fillStyle='#fff0c8';ctx.shadowColor='#050807';ctx.shadowBlur=3;
+   while(fontSize>8){
+    ctx.font='900 '+fontSize+'px "Malgun Gothic",sans-serif';
+    if(ctx.measureText(name).width<=horizontalLabelWidth-6)break;
+    fontSize-=0.5;
+   }
+   ctx.font='900 '+fontSize+'px "Malgun Gothic",sans-serif';
+   ctx.fillText(name,x+horizontalLabelWidth/2,y+6+horizontalLogoSize+4,horizontalLabelWidth-6);
+   ctx.restore();
+  };
+  const drawHorizontalSinnerGroup=(group,columns,x,y)=>{
+   drawHorizontalSinnerLabel(group,x,y);
+   let used=drawGrid(group.identities,columns,x+horizontalLabelOffset,y);
+   if(group.identities.length&&group.egos.length)used+=mixedGap;
+   used+=drawGrid(group.egos,columns,x+horizontalLabelOffset,y+used);
+   return Math.max(used,horizontalLabelHeight);
+  };
   if(vertical){
    // 각 수감자 열 위에 이름을 넣고, 이름 아래부터 인격과 E.G.O를 쌓습니다.
-   const sinnerNames=new Map(sinners.map(s=>[s.id,s.name]));
    for(let i=0;i<verticalGroups.length;i++){
     const group=verticalGroups[i];
     const x=pad+i*(cardW+sinnerColumnGap);
@@ -562,9 +603,7 @@ async function collectionDownloadOwnedPicture(){
       ctx.beginPath();ctx.moveTo(sideX+3,dividerY);ctx.lineTo(sideX+sideWidth-3,dividerY);ctx.stroke();
       y+=groupBreak;
      }
-     y+=drawGrid(group.identities,sideCols,sideX,y);
-     if(group.identities.length&&group.egos.length)y+=mixedGap;
-     y+=drawGrid(group.egos,sideCols,sideX,y);
+     y+=drawHorizontalSinnerGroup(group,sideCols,sideX,y);
     }
    }
   }else if(grouped){
@@ -576,9 +615,7 @@ async function collectionDownloadOwnedPicture(){
      ctx.beginPath();ctx.moveTo(pad+12,dividerY);ctx.lineTo(width-pad-12,dividerY);ctx.stroke();
      y+=groupBreak;
     }
-    y+=drawGrid(group.identities,layoutCols,pad,y);
-    if(group.identities.length&&group.egos.length)y+=mixedGap;
-    y+=drawGrid(group.egos,layoutCols,pad,y);
+    y+=drawHorizontalSinnerGroup(group,layoutCols,pad,y);
    }
   }else{
    let y=head;
