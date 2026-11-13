@@ -21,9 +21,13 @@ function renderCollection(){
  $('collectionVisible').textContent=matches.length+'개 표시';
  grid.innerHTML=matches.length?matches.map(row=>{
   const owned=collectionOwned(row),sinner=sl.find(s=>s.id===row.sinner)?.name||'';
-  const fallback='<span class="collection-no-image">이미지 미등록</span>';
+  const fallback='<span class="collection-no-image"'+(row.image?' style="display:none"':'')+'>이미지 미등록</span>';
   const pic=row.image?'<img src="'+esc(row.image)+'" loading="lazy" decoding="async" alt="'+esc(sinner+' '+row.name)+'" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\'">'+fallback:fallback;
-  return '<button type="button" class="collection-card '+(owned?'owned':'')+'" data-collection-id="'+esc(row.id)+'" '+(row.base?'disabled title="기본 지급 항목"':'')+' aria-pressed="'+owned+'"><span class="collection-image">'+pic+'<span class="collection-owned-mark">'+(owned?'✓':'')+'</span></span><span class="collection-text"><span class="collection-rank">'+esc(row.kind==='identity'?'★'.repeat(row.rarity):row.rarity)+' · '+esc(sinner)+'</span><span class="collection-name">'+esc(row.name)+'</span><span class="collection-ownership">'+(row.base?'기본 지급':owned?'✓ 보유':'＋ 미보유')+'</span></span></button>';
+  const attributes=' data-collection-id="'+esc(row.id)+'"'+(row.base?' disabled title="기본 지급 항목"':'')+' aria-pressed="'+owned+'" aria-label="'+esc(sinner+' '+row.name+' · '+(owned?'보유':'미보유'))+'"';
+  if(row.kind==='identity'){
+   return '<button type="button" class="collection-card identity-card rarity-'+row.rarity+(owned?' owned':'')+'"'+attributes+'><span class="collection-image">'+pic+'<span class="collection-card-grade">'+esc('★'.repeat(row.rarity))+'</span><span class="collection-owned-mark">'+(owned?'O':'')+'</span><span class="collection-name-overlay">'+esc(row.name)+'</span></span></button>';
+  }
+  return '<button type="button" class="collection-card ego-card ego-rank-'+esc(String(row.rarity).toLowerCase())+(owned?' owned':'')+'"'+attributes+'><span class="collection-ego-wrap"><span class="collection-image collection-ego-circle">'+pic+'<span class="collection-owned-mark">'+(owned?'O':'')+'</span></span></span><span class="collection-ego-name">'+esc(row.name)+'</span><span class="collection-ego-meta">'+esc(row.rarity)+' · '+esc(sinner)+'</span></button>';
  }).join(''):'<div class="collection-empty">조건에 맞는 항목이 없습니다. 필터를 초기화해 보세요.</div>';
  document.querySelectorAll('[data-collection-kind]').forEach(b=>b.classList.toggle('selected',b.dataset.collectionKind===collectionKind));
  document.querySelectorAll('[data-collection-owner]').forEach(b=>b.classList.toggle('selected',b.dataset.collectionOwner===collectionOwnerFilter));
