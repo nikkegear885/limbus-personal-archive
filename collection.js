@@ -9,6 +9,9 @@ const collectionSinnerLogoNumbers=Object.freeze({
  heathcliff:7,ishmael:8,rodion:9,sinclair:10,outis:11,gregor:12
 });
 function collectionSinnerLogoURL(id){
+ return collectionSinnerLogoNumbers[id]?'assets/sinner-logos/'+id+'.webp':'';
+}
+function collectionSinnerLogoFallbackURL(id){
  const number=collectionSinnerLogoNumbers[id];
  return number?'https://raw.githubusercontent.com/eldritchtools/limbus-assets/main/assets/sinners/'+number+'.webp':'';
 }
@@ -482,7 +485,8 @@ async function collectionDownloadOwnedPicture(){
   // PNG의 심볼은 캔버스 렌더링 전에 완전히 불러와 내보낸 이미지에도 포함시킵니다.
   const sinnerLogoImages=new Map();
   if(vertical)await Promise.all(verticalGroups.map(async group=>{
-   const logo=await collectionPictureImage(collectionSinnerLogoURL(group.sinner));
+   const logo=await collectionPictureImage(collectionSinnerLogoURL(group.sinner))||
+    await collectionPictureImage(collectionSinnerLogoFallbackURL(group.sinner));
    if(logo)sinnerLogoImages.set(group.sinner,logo);
   }));
   const drawGrid=(items,columnCount,x,y,sinnerName='')=>{
@@ -610,7 +614,7 @@ function wireCollection(){
  const sinners=collectionSinners();
  const sinnerTab=(id,name,selected)=>{
   const logo=collectionSinnerLogoURL(id);
-  const badge=logo?'<img class="collection-sinner-logo" src="'+esc(logo)+'" data-collection-backup="'+esc(collectionImageMirror(logo))+'" loading="lazy" decoding="async" alt="" aria-hidden="true">':'<span class="collection-sinner-logo-placeholder" aria-hidden="true"></span>';
+  const badge=logo?'<img class="collection-sinner-logo" src="'+esc(logo)+'" data-collection-backup="'+esc(collectionSinnerLogoFallbackURL(id))+'" loading="lazy" decoding="async" alt="" aria-hidden="true">':'<span class="collection-sinner-logo-placeholder" aria-hidden="true"></span>';
   return '<button type="button" class="collection-filter collection-sinner-tab'+(selected?' selected':'')+'" data-collection-sinner="'+esc(id)+'">'+badge+'<span class="collection-sinner-name">'+esc(name)+'</span><span class="collection-sinner-count"><span data-collection-count="identity">인격 0/0</span><span data-collection-count="ego">E.G.O 0/0</span></span></button>';
  };
  $('collectionSinnerTabs').innerHTML=sinnerTab('all','전체',true)+sinners.map(s=>sinnerTab(s.id,s.name,false)).join('');
