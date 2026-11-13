@@ -105,12 +105,12 @@ function collectionPictureTitleLayout(ctx,row,cardW,factor,cropPercent){
  const identity=row.kind==='identity';
  const innerWidth=cardW/factor;
  const innerHeight=identity?Math.round(innerWidth*370/240*(1-cropPercent/100)):230;
- const baseFont=identity?25.6:24; // 기존 32px / 30px 대비 20% 축소
+ const baseFont=identity?20.48:19.2; // 직전 PNG 이름 크기에서 추가로 20% 축소
  const bottomInset=identity?9:24;
  const maxTextHeight=innerHeight-(identity?30:19)-bottomInset;
  let result=null;
  ctx.save();
- for(let font=baseFont;font>=9.5;font-=0.5){
+ for(let font=baseFont;font>=8;font-=0.5){
   ctx.font='900 '+font+'px "Malgun Gothic",sans-serif';
   const lines=collectionPictureWrapWords(ctx,row.name,innerWidth-16);
   const lineHeight=Math.ceil(font*1.17);
