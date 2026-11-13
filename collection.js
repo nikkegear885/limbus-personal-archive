@@ -35,7 +35,7 @@ function renderCollection(){
   const owned=collectionOwned(row),sinner=sl.find(s=>s.id===row.sinner)?.name||'';
   const fallback='<span class="collection-no-image"'+(row.image?' style="display:none"':'')+'>이미지 미등록</span>';
   // 가로형 게임 원화를 쓰는 인격만 개별 포커스에 맞춰 자릅니다.
-  const portraitStyle=row.kind==='identity'&&/^\\d{1,3}% center$/.test(row.imagePosition||'')?' style="object-position:'+esc(row.imagePosition)+'"':'';
+  const portraitStyle=row.kind==='identity'&&/^[0-9]{1,3}% center$/.test(row.imagePosition||'')?' style="object-position:'+esc(row.imagePosition)+'"':'';
   const pic=row.image?'<img src="'+esc(row.image)+'" data-collection-backup="'+esc(collectionImageMirror(row.image))+'" loading="lazy" decoding="async"'+portraitStyle+' alt="'+esc(sinner+' '+row.name)+'">'+fallback:fallback;
   const attributes=' data-collection-id="'+esc(row.id)+'"'+(row.base?' disabled title="기본 지급 항목"':'')+' aria-pressed="'+owned+'" aria-label="'+esc(sinner+' '+row.name+' · '+(owned?'보유':'미보유'))+'"';
   if(row.kind==='identity'){
