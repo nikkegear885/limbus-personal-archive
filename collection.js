@@ -532,7 +532,8 @@ async function collectionDownloadOwnedPicture(){
     if(i>0){
      const dividerX=x-sinnerColumnGap/2;
      ctx.strokeStyle='#62716c';ctx.lineWidth=1;
-     ctx.beginPath();ctx.moveTo(dividerX,head);ctx.lineTo(dividerX,logicalHeight-footer);ctx.stroke();
+     // 수감자 열 구분선을 로고·이름 높이부터 사진 끝까지 이어줍니다.
+     ctx.beginPath();ctx.moveTo(dividerX,8);ctx.lineTo(dividerX,logicalHeight-footer);ctx.stroke();
     }
     let columnY=head;
     columnY+=drawGrid(group.identities,1,x,columnY);
