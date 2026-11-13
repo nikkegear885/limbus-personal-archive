@@ -54,10 +54,12 @@
 .collection-filter.selected{border-color:var(--accent);background:#4a3f2d;color:#ffe0a9;font-weight:800}
 
 #collectionSinnerTabs .collection-sinner-tab{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:8px 12px;min-width:132px;white-space:normal;line-height:1.25}
+#collectionSinnerTabs .collection-sinner-logo{display:block;width:57px;height:57px;max-width:100%;object-fit:contain;background:#070a0c;border-radius:9px}
+#collectionSinnerTabs .collection-sinner-logo-placeholder{display:block;width:57px;height:57px;max-width:100%;border-radius:9px;background:linear-gradient(145deg,#263237,#111a1e)}
 #collectionSinnerTabs .collection-sinner-name{font-size:12px;font-weight:800;white-space:nowrap}
 #collectionSinnerTabs .collection-sinner-count{display:flex;flex-wrap:nowrap;align-items:center;justify-content:center;gap:7px;font-size:10px;font-weight:600;color:#aebfbc;white-space:nowrap;font-variant-numeric:tabular-nums}
 #collectionSinnerTabs .collection-sinner-tab.selected .collection-sinner-count{color:#f2d5a3}
-@media(max-width:570px){#collectionSinnerTabs{gap:5px}#collectionSinnerTabs .collection-sinner-tab{min-width:calc((100% - 10px)/3);padding:7px 4px}#collectionSinnerTabs .collection-sinner-name{font-size:11px}#collectionSinnerTabs .collection-sinner-count{font-size:9px;gap:5px}}
+@media(max-width:570px){#collectionSinnerTabs{gap:5px}#collectionSinnerTabs .collection-sinner-tab{min-width:calc((100% - 10px)/3);padding:7px 4px}#collectionSinnerTabs .collection-sinner-logo,#collectionSinnerTabs .collection-sinner-logo-placeholder{width:48px;height:48px}#collectionSinnerTabs .collection-sinner-name{font-size:11px}#collectionSinnerTabs .collection-sinner-count{font-size:9px;gap:5px}}
 
 .collection-toolbar{display:flex;flex-wrap:wrap;gap:9px;margin:18px 0}
 .collection-toolbar input{flex:3;min-width:190px}
@@ -201,8 +203,8 @@
   </div>
 </div>
 <input type="file" id="photoInput" accept="image/*" multiple hidden><input type="file" id="restoreInput" accept="application/json,.json" hidden>
-<script src="collection-data.js?v=20261113-sinner-column-headings2"></script>
-<script src="collection.js?v=20261113-sinner-column-headings2"></script>
+<script src="collection-data.js?v=20261113-sinner-logos1"></script>
+<script src="collection.js?v=20261113-sinner-logos1"></script>
 <script>
 'use strict';
 const CATEGORIES=['거울던전','E.G.O 기프트','덱·인격','테마팩','스토리','기타'];
