@@ -127,15 +127,15 @@ function collectionPictureOwnedMark(ctx,x,y){
  ctx.fillStyle='#ffffff';ctx.font='900 18px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('O',x,y+1);
  ctx.textBaseline='alphabetic';
 }
-function collectionPictureCard(ctx,row,image,x,y,w,h,sinnerName,cardScale=1,cropBottom=false){
+function collectionPictureCard(ctx,row,image,x,y,w,h,sinnerName,cardScale=1,cropPercent=0){
  // 카드 크기가 변해도 이름, 별, O 배지, E.G.O 원형 비율을 함께 유지합니다.
  if(cardScale!==1){
   ctx.save();ctx.translate(x,y);ctx.scale(cardScale,cardScale);
-  collectionPictureCard(ctx,row,image,0,0,w/cardScale,h/cardScale,sinnerName,1,cropBottom);
+  collectionPictureCard(ctx,row,image,0,0,w/cardScale,h/cardScale,sinnerName,1,cropPercent);
   ctx.restore();return;
  }
  const identity=row.kind==='identity';
- const artworkHeight=identity&&cropBottom?h/0.7:h;
+ const artworkHeight=identity&&cropPercent?h/(1-cropPercent/100):h;
  const border=identity?(row.rarity===3?'#d4a750':row.rarity===2?'#b14537':'#8b785a'):'#786447';
  ctx.save();
  collectionPictureRounded(ctx,x,y,w,h,11);ctx.fillStyle='#151b20';ctx.fill();
@@ -215,12 +215,12 @@ function collectionExportSizeSettings(){
 }
 // 사진 저장 설정도 다른 도감 설정과 동일한 IndexedDB(meta)에 보관합니다.
 const collectionExportPreferenceDefaults=Object.freeze({
- identity:true,ego:true,rank1:true,rank2:true,rank3:true,groupBySinner:true,cropBottom:false,cardSize:70
+ identity:true,ego:true,rank1:true,rank2:true,rank3:true,groupBySinner:true,cropPercent:0,cardSize:70
 });
 const collectionExportPreferenceControls={
  identity:'collectionExportIdentity',ego:'collectionExportEgo',
  rank1:'collectionExportRank1',rank2:'collectionExportRank2',rank3:'collectionExportRank3',
- groupBySinner:'collectionExportGroupBySinner',cropBottom:'collectionExportCropBottom'
+ groupBySinner:'collectionExportGroupBySinner'
 };
 let collectionExportSaveQueue=Promise.resolve();
 function collectionExportNormalizePreferences(value){
@@ -229,6 +229,8 @@ function collectionExportNormalizePreferences(value){
  for(const key of Object.keys(collectionExportPreferenceControls)){
   if(typeof prefs[key]==='boolean')normalized[key]=prefs[key];
  }
+ if([0,30,40].includes(prefs.cropPercent))normalized.cropPercent=prefs.cropPercent;
+ else if(prefs.cropBottom===true)normalized.cropPercent=30; // 기존 30% 체크 보존
  if(typeof prefs.cardSize==='number'&&Number.isFinite(prefs.cardSize)){
   normalized.cardSize=Math.max(40,Math.min(120,Math.round(prefs.cardSize/5)*5));
  }
@@ -238,12 +240,14 @@ function collectionExportReadPreferences(){
  const raw={};
  for(const [key,id] of Object.entries(collectionExportPreferenceControls))raw[key]=$(id).checked;
  raw.cardSize=Number($('collectionExportCardSize').value);
+ raw.cropPercent=Number($('collectionExportCropPercent').value);
  return collectionExportNormalizePreferences(raw);
 }
 function collectionExportApplyPreferences(value){
  const prefs=collectionExportNormalizePreferences(value);
  for(const [key,id] of Object.entries(collectionExportPreferenceControls))$(id).checked=prefs[key];
  $('collectionExportCardSize').value=String(prefs.cardSize);
+ $('collectionExportCropPercent').value=String(prefs.cropPercent);
  collectionExportUpdateSummary();
 }
 function collectionExportSavePreferences(){
@@ -333,14 +337,15 @@ async function collectionDownloadOwnedPicture(){
   if(!ctx)throw new Error('브라우저에서 이미지 캔버스를 지원하지 않습니다');
   const {width,pad,cols,gap,cardW,factor}=collectionExportSizeSettings();
   const grouped=$('collectionExportGroupBySinner')?.checked!==false;
-  const cropBottom=$('collectionExportCropBottom')?.checked===true;
+  const cropPercent=Number($('collectionExportCropPercent').value)||0;
   const groups=grouped?collectionExportSinnerGroups(identities,egos,sinners):[];
-  const identityHeight=Math.round(cardW*370/240*(cropBottom?0.7:1)),egoHeight=Math.round(230*factor);
+  const identityHeight=Math.round(cardW*370/240*(1-cropPercent/100)),egoHeight=Math.round(230*factor);
   const sections=[
    {kind:'identity',items:identities,title:'인격',height:identityHeight},
    {kind:'ego',items:egos,title:'E.G.O',height:egoHeight}
   ].filter(section=>section.items.length);
-  const sectionHeader=57,sectionBottom=14,head=143,footer=48;
+  // 저장 이미지에는 상단 제목/집계와 하단 출처 문구를 넣지 않습니다.
+  const head=8,footer=8,sectionGap=8;
   // 수감자 사이에는 1px 선이 들어갈 최소한의 공간만 유지합니다.
   const groupBreak=5,mixedGap=3;
   const groupedBlockHeight=(items,height)=>{
@@ -351,8 +356,8 @@ async function collectionDownloadOwnedPicture(){
    (group.identities.length&&group.egos.length?mixedGap:0)+
    groupedBlockHeight(group.egos,egoHeight);
   const contentHeight=grouped?
-   groups.reduce((sum,group,i)=>sum+(i?groupBreak:0)+groupContentHeight(group),0)+sectionBottom:
-   sections.reduce((sum,section)=>sum+sectionHeader+Math.ceil(section.items.length/cols)*(section.height+gap)+sectionBottom,0);
+   groups.reduce((sum,group,i)=>sum+(i?groupBreak:0)+groupContentHeight(group),0):
+   sections.reduce((sum,section,i)=>sum+(i?sectionGap:0)+groupedBlockHeight(section.items,section.height),0);
   const logicalHeight=head+contentHeight+footer;
   if(logicalHeight>30000)throw new Error('보유 이미지가 너무 길어 저장할 수 없습니다. 수감자를 선택해 나눠 저장해 주세요');
   // 기존 고정 1120px PNG를 3배/2배 픽셀 밀도로 렌더링합니다.
@@ -365,13 +370,7 @@ async function collectionDownloadOwnedPicture(){
   canvas.height=Math.ceil(logicalHeight*outputScale);
   ctx.setTransform(outputScale,0,0,outputScale,0,0);
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-  ctx.fillStyle='#0c1216';ctx.fillRect(0,0,width,canvas.height);
-  const sinner=sinnerFilter==='all'?'전체':sinners.find(s=>s.id===sinnerFilter)?.name||'전체';
-  ctx.fillStyle='#f0d5a3';ctx.font='900 31px "Malgun Gothic",sans-serif';ctx.textAlign='left';
-  ctx.fillText('LIMBUS COMPANY · 보유 도감',pad,60);
-  ctx.fillStyle='#adb8b7';ctx.font='16px "Malgun Gothic",sans-serif';
-  ctx.fillText(sinner+' · 인격 '+identities.length+'종 · E.G.O '+egos.length+'종 · O 보유 항목만',pad,96);
-  ctx.strokeStyle='#495254';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad,114);ctx.lineTo(width-pad,114);ctx.stroke();
+  ctx.fillStyle='#0c1216';ctx.fillRect(0,0,width,logicalHeight);
   const loadedMap=new Map(allRows.map((row,i)=>[row.id,images[i]]));
   let y=head;
   if(grouped){
@@ -388,39 +387,35 @@ async function collectionDownloadOwnedPicture(){
     for(let i=0;i<group.identities.length;i++){
      const row=group.identities[i],x=pad+(i%cols)*(cardW+gap);
      const cy=y+Math.floor(i/cols)*(identityHeight+gap);
-     collectionPictureCard(ctx,row,loadedMap.get(row.id),x,cy,cardW,identityHeight,'',factor,cropBottom);
+     collectionPictureCard(ctx,row,loadedMap.get(row.id),x,cy,cardW,identityHeight,'',factor,cropPercent);
     }
     y+=groupedBlockHeight(group.identities,identityHeight);
     if(group.identities.length&&group.egos.length)y+=mixedGap;
     for(let i=0;i<group.egos.length;i++){
      const row=group.egos[i],x=pad+(i%cols)*(cardW+gap);
      const cy=y+Math.floor(i/cols)*(egoHeight+gap);
-     collectionPictureCard(ctx,row,loadedMap.get(row.id),x,cy,cardW,egoHeight,'',factor,cropBottom);
+     collectionPictureCard(ctx,row,loadedMap.get(row.id),x,cy,cardW,egoHeight,'',factor,cropPercent);
     }
     y+=groupedBlockHeight(group.egos,egoHeight);
    }
   }else{
-   // 구분 끔: 기존 인격/E.G.O 구역별 저장 방식을 유지합니다.
-   for(const section of sections){
-    ctx.fillStyle='#edd39f';ctx.font='900 22px "Malgun Gothic",sans-serif';ctx.textAlign='left';
-    ctx.fillText(section.title+' · '+section.items.length+'종',pad,y+28);
-    if(section.kind==='identity'){
-     const marks=ranks.map(n=>'★'.repeat(n)).join(' / ');
-     ctx.fillStyle='#a3b1ad';ctx.font='13px "Malgun Gothic",sans-serif';
-     ctx.fillText('포함 등급: '+marks,pad+210,y+27);
+   // 구분 끔: 인격/E.G.O 카드만 저장하며 제목·개수·출처 텍스트는 넣지 않습니다.
+   for(let sectionIndex=0;sectionIndex<sections.length;sectionIndex++){
+    const section=sections[sectionIndex];
+    if(sectionIndex){
+     const dividerY=y+sectionGap/2;
+     ctx.strokeStyle='#62716c';ctx.lineWidth=1;
+     ctx.beginPath();ctx.moveTo(pad+12,dividerY);ctx.lineTo(width-pad-12,dividerY);ctx.stroke();
+     y+=sectionGap;
     }
-    ctx.strokeStyle='#3d4848';ctx.beginPath();ctx.moveTo(pad,y+43);ctx.lineTo(width-pad,y+43);ctx.stroke();
-    y+=sectionHeader;
     for(let i=0;i<section.items.length;i++){
      const row=section.items[i],x=pad+(i%cols)*(cardW+gap),cy=y+Math.floor(i/cols)*(section.height+gap);
-     collectionPictureCard(ctx,row,loadedMap.get(row.id),x,cy,cardW,section.height,sinners.find(s=>s.id===row.sinner)?.name||'',factor,cropBottom);
+     collectionPictureCard(ctx,row,loadedMap.get(row.id),x,cy,cardW,section.height,sinners.find(s=>s.id===row.sinner)?.name||'',factor,cropPercent);
     }
-    y+=Math.ceil(section.items.length/cols)*(section.height+gap)+sectionBottom;
+    y+=groupedBlockHeight(section.items,section.height);
    }
   }
   const failed=images.filter(img=>!img).length;
-  ctx.fillStyle='#76878a';ctx.font='13px "Malgun Gothic",sans-serif';ctx.textAlign='left';
-  ctx.fillText('Illustrations © Project Moon · 개인용 보유 도감',pad,logicalHeight-15);
   const blob=await new Promise((resolve,reject)=>{
    try{canvas.toBlob(b=>b?resolve(b):reject(new Error('PNG 파일 생성에 실패했습니다')),'image/png')}
    catch(e){reject(e)}
@@ -480,7 +475,8 @@ function wireCollection(){
  collectionExportApplyPreferences(state.collectionExportPrefs);
  $('collectionExportCardSize').addEventListener('input',collectionExportUpdateSummary);
  $('collectionExportCardSize').addEventListener('change',collectionExportSettingsChanged);
- for(const id of ['collectionExportIdentity','collectionExportEgo','collectionExportRank1','collectionExportRank2','collectionExportRank3','collectionExportGroupBySinner','collectionExportCropBottom']){
+ $('collectionExportCropPercent').addEventListener('change',collectionExportSettingsChanged);
+ for(const id of ['collectionExportIdentity','collectionExportEgo','collectionExportRank1','collectionExportRank2','collectionExportRank3','collectionExportGroupBySinner']){
   $(id).addEventListener('change',collectionExportSettingsChanged);
  }
  $('collectionDownloadPicture').addEventListener('click',collectionDownloadOwnedPicture);
