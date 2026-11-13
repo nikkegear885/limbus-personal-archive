@@ -426,14 +426,17 @@ async function collectionDownloadOwnedPicture(){
   });
   const sideWidths=sideColumnCounts.map(count=>count?count*cardW+(count-1)*gap:0);
   const sideGap=sideWidths.length===2&&sideWidths[0]&&sideWidths[1]?8:0;
-  const exportWidth=vertical?Math.ceil(pad*2+cardW):
+  // 수감자마다 카드 1열을 할당하고, 각 열을 한 장에 가로로 나란히 배치합니다.
+  const sinnerColumnGap=8;
+  const verticalGroups=vertical?groups:[];
+  const exportWidth=vertical?Math.ceil(pad*2+verticalGroups.length*cardW+Math.max(0,verticalGroups.length-1)*sinnerColumnGap):
    splitSides?Math.ceil(pad*2+sideWidths.reduce((sum,w)=>sum+w,0)+sideGap):width;
   const sidePositions=[pad,pad+(sideWidths[0]||0)+sideGap];
   const sections=[
    {kind:'identity',items:identities},
    {kind:'ego',items:egos}
   ].filter(section=>section.items.length);
-  const head=8,footer=8,sectionGap=8,groupBreak=vertical?16:5,mixedGap=3;
+  const head=8,footer=8,sectionGap=8,groupBreak=5,mixedGap=3;
   const layoutCache=new WeakMap();
   const getLayout=(items,columnCount)=>{
    let cache=layoutCache.get(items);
@@ -446,8 +449,9 @@ async function collectionDownloadOwnedPicture(){
    (group.identities.length&&group.egos.length?mixedGap:0)+
    getLayout(group.egos,columnCount).height;
   const groupsHeight=(items,columnCount)=>items.reduce((sum,group,i)=>sum+(i?groupBreak:0)+groupHeight(group,columnCount),0);
-  const contentHeight=splitSides?
-   Math.max(...splitGroups.map((side,i)=>groupsHeight(side,sideColumnCounts[i]||1))):
+  const contentHeight=vertical?
+   Math.max(...verticalGroups.map(group=>groupHeight(group,1))):
+   splitSides?Math.max(...splitGroups.map((side,i)=>groupsHeight(side,sideColumnCounts[i]||1))):
    grouped?groupsHeight(groups,layoutCols):
    sections.reduce((sum,section,i)=>sum+(i?sectionGap:0)+getLayout(section.items,layoutCols).height,0);
   const logicalHeight=head+contentHeight+footer;
@@ -470,7 +474,22 @@ async function collectionDownloadOwnedPicture(){
    }
    return current.height;
   };
-  if(splitSides){
+  if(vertical){
+   // 열마다 높이는 독립적으로 증가시키고, 서로 다른 수감자는 바로 옆 열에 그립니다.
+   for(let i=0;i<verticalGroups.length;i++){
+    const group=verticalGroups[i];
+    const x=pad+i*(cardW+sinnerColumnGap);
+    if(i>0){
+     const dividerX=x-sinnerColumnGap/2;
+     ctx.strokeStyle='#62716c';ctx.lineWidth=1;
+     ctx.beginPath();ctx.moveTo(dividerX,head);ctx.lineTo(dividerX,logicalHeight-footer);ctx.stroke();
+    }
+    let columnY=head;
+    columnY+=drawGrid(group.identities,1,x,columnY);
+    if(group.identities.length&&group.egos.length)columnY+=mixedGap;
+    columnY+=drawGrid(group.egos,1,x,columnY);
+   }
+  }else if(splitSides){
    if(sideGap){
     const centerX=sidePositions[1]-sideGap/2;
     ctx.strokeStyle='#4c5c59';ctx.lineWidth=1;
