@@ -131,6 +131,14 @@
 @media(max-width:570px){.collection-preview-dialog{max-height:96dvh}.collection-preview-header,.collection-preview-footer{padding:10px}.collection-preview-body{padding:8px}.collection-preview-meta{font-size:11px}}
 
 /* 거울던전 층별 테마팩 티어표 */
+.pack-tier-modes{display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:9px;margin:17px 0 10px}
+.pack-tier-mode{padding:13px 10px;border-radius:11px;border:1px solid #435055;background:#1b252a;color:#bdc8c5;font-size:13px;font-weight:800;min-width:0}
+.pack-tier-mode:hover{background:#2c373b}
+.pack-tier-mode.active{background:#51432d;color:#ffe3b5;border-color:#d4ac76;box-shadow:inset 0 0 0 1px #c9aa7533}
+.pack-tier-route{color:#dfc08e;font-size:12px;font-weight:750;margin:0 0 12px;line-height:1.6}
+.pack-tier-floor small{display:block;color:#92a9a7;font-size:10px;font-weight:600;margin-top:4px}
+.pack-tier-floor.active small{color:#efd4a6}
+@media(max-width:550px){.pack-tier-modes{gap:6px}.pack-tier-mode{font-size:11px;padding:11px 4px}}
 .pack-tier-intro{margin:14px 0 17px;padding:13px 16px;border:1px solid var(--border);border-radius:12px;background:var(--panel);font-size:12px;color:#c5d0cf;line-height:1.75}
 .pack-tier-intro strong{color:#ebcea0}
 .pack-tier-controls{display:flex;flex-wrap:wrap;gap:9px;margin:0 0 14px}
@@ -205,8 +213,10 @@
     </div>
 
     <div id="pagePacks" hidden>
-      <div class="hero"><div><div class="eyebrow">MIRROR DUNGEON · THEME PACK ROUTES</div><h1>층별 팩 티어표</h1><p>거울던전 <b>5층런 기준</b>의 비공식 테마팩 선택 참고표입니다.<br>층을 선택해 추천 팩과 목표 기프트를 확인하고, 덱별 필터와 개인 티어를 사용하세요.</p></div><div class="hero-counter"><div class="stat"><strong id="packTierCount">0개</strong><span>조건에 맞는 팩</span></div></div></div>
+      <div class="hero"><div><div class="eyebrow">MIRROR DUNGEON · THEME PACK ROUTES</div><h1>층별 팩 티어표</h1><p>거울던전 <b>5층런 기준</b>의 비공식 테마팩 선택 참고표입니다.<br><b>노말 / 노말 → 하드 5층 / 하드</b> 중 하나를 고른 뒤 층별 추천 팩을 확인하세요.</p></div><div class="hero-counter"><div class="stat"><strong id="packTierCount">0개</strong><span>조건에 맞는 팩</span></div></div></div>
       <div class="pack-tier-intro"><strong>우선순위 안내</strong> · <span class="gift-rank s">S</span> 5층런 주요 루트 · <span class="gift-rank a">A</span> 좋은 대안 · <span class="gift-rank b">B</span> 조건부 선택 · <span class="gift-rank c">C</span> 보류 / <b>고정 성능 순위가 아닙니다.</b> 해금 상태·덱·팩 보상·노말/하드 선택에 따라 달라집니다.</div>
+      <div id="packTierModes" class="pack-tier-modes" role="group" aria-label="거울던전 난이도 루트 선택"></div>
+      <p id="packTierRoute" class="pack-tier-route">1~5층 모두 노말 · 노말 팩만 표시</p>
       <div id="packTierFloors" class="pack-tier-floors" aria-label="거울던전 층 선택"></div>
       <div class="pack-tier-controls">
         <select id="packTierTag" aria-label="덱 키워드"><option value="전체">전체 덱</option><option value="파열">파열</option><option value="호흡">호흡</option><option value="침잠">침잠</option><option value="충전">충전</option><option value="출혈">출혈</option><option value="화상">화상</option><option value="진동">진동</option></select>
@@ -214,10 +224,10 @@
         <input id="packTierSearch" type="search" placeholder="팩 이름 · 기프트 · 효과 검색" aria-label="테마팩 검색" autocomplete="off">
         <button id="packTierReset" class="btn small quiet" type="button">필터 초기화</button>
       </div>
-      <p class="pack-tier-summary">최근 공략 루트와 범용 선택지를 참고해 구성했습니다. <strong>각 팩의 ‘내 평가’는 직접 변경 가능</strong>하며 현재 브라우저와 백업 파일에 저장됩니다.</p>
+      <p class="pack-tier-summary">테마팩의 노말·하드 등장 층을 구분했습니다. 추천 티어는 5층런 참고용이며 덱·해금·보상에 따라 달라질 수 있습니다. <strong>모드별 내 평가는 별도로 저장</strong>되고 백업에 포함됩니다.</p>
       <div id="packTierBoard" class="pack-tier-board"></div>
-      <div class="pack-tier-add"><h3>＋ 내 테마팩 추가</h3><div class="pack-tier-add-row"><input id="packTierAddName" maxlength="65" aria-label="추가할 팩 이름" placeholder="선택한 층에 팩 이름 추가"><select id="packTierAddRank" aria-label="추가 팩 티어"><option value="S">S 티어</option><option value="A">A 티어</option><option value="B" selected>B 티어</option><option value="C">C 티어</option></select><button id="packTierAdd" class="btn small primary" type="button">추가</button></div><div class="pack-tier-add-note">없는 팩은 직접 추가할 수 있으며, 공개 사이트의 공통 목록이 아니라 내 브라우저에만 저장됩니다.</div></div>
-      <div class="gift-sources"><b>참고한 커뮤니티 공략</b>
+      <div class="pack-tier-add"><h3>＋ 내 테마팩 추가</h3><div class="pack-tier-add-row"><input id="packTierAddName" maxlength="65" aria-label="추가할 팩 이름" placeholder="선택한 층에 팩 이름 추가"><select id="packTierAddRank" aria-label="추가 팩 티어"><option value="S">S 티어</option><option value="A">A 티어</option><option value="B" selected>B 티어</option><option value="C">C 티어</option></select><button id="packTierAdd" class="btn small primary" type="button">추가</button></div><div class="pack-tier-add-note">현재 선택한 난이도·층에만 팩을 추가합니다. 기존에 추가한 팩은 그대로 보존되며, 내 브라우저에만 저장됩니다.</div></div>
+      <div class="gift-sources"><b>참고 자료</b><a href="https://md-navi.com/theme-packs" target="_blank" rel="noopener noreferrer">테마팩 등장 층 도감</a>
         <a href="https://gall.dcinside.com/mgallery/board/view/?id=lobotomycorporation&amp;no=6180885" target="_blank" rel="noopener noreferrer">2026.10 5층 고속런</a>
         <a href="https://gall.dcinside.com/mgallery/board/view/?id=limbuscompany&amp;no=495443" target="_blank" rel="noopener noreferrer">검슈 5층런 루트</a>
         <a href="https://gall.dcinside.com/mgallery/board/view/?id=limbuscompany&amp;no=572705" target="_blank" rel="noopener noreferrer">2026.10 구멍런</a>
@@ -265,7 +275,7 @@
 <input type="file" id="photoInput" accept="image/*" multiple hidden><input type="file" id="restoreInput" accept="application/json,.json" hidden>
 <script src="collection-data.js?v=20261113-horizontal-sinner-labels1"></script>
 <script src="collection.js?v=20261113-horizontal-sinner-labels1"></script>
-<script src="packs.js?v=20261113-floor-pack-tiers1"></script>
+<script src="packs.js?v=20261113-three-difficulty-routes2"></script>
 <script>
 'use strict';
 const CATEGORIES=['거울던전','E.G.O 기프트','덱·인격','테마팩','스토리','기타'];
