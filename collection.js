@@ -212,6 +212,54 @@ function collectionExportSizeSettings(){
  const cols=Math.max(1,Math.floor((width-pad*2+gap+0.001)/(cardW+gap)));
  return {percent,factor,width,pad,cardW,gap,cols};
 }
+// 사진 저장 설정도 다른 도감 설정과 동일한 IndexedDB(meta)에 보관합니다.
+const collectionExportPreferenceDefaults=Object.freeze({
+ identity:true,ego:true,rank1:true,rank2:true,rank3:true,groupBySinner:true,cardSize:70
+});
+const collectionExportPreferenceControls={
+ identity:'collectionExportIdentity',ego:'collectionExportEgo',
+ rank1:'collectionExportRank1',rank2:'collectionExportRank2',rank3:'collectionExportRank3',
+ groupBySinner:'collectionExportGroupBySinner'
+};
+let collectionExportSaveQueue=Promise.resolve();
+function collectionExportNormalizePreferences(value){
+ const prefs=value&&typeof value==='object'&&!Array.isArray(value)?value:{};
+ const normalized={...collectionExportPreferenceDefaults};
+ for(const key of Object.keys(collectionExportPreferenceControls)){
+  if(typeof prefs[key]==='boolean')normalized[key]=prefs[key];
+ }
+ if(typeof prefs.cardSize==='number'&&Number.isFinite(prefs.cardSize)){
+  normalized.cardSize=Math.max(40,Math.min(120,Math.round(prefs.cardSize/5)*5));
+ }
+ return normalized;
+}
+function collectionExportReadPreferences(){
+ const raw={};
+ for(const [key,id] of Object.entries(collectionExportPreferenceControls))raw[key]=$(id).checked;
+ raw.cardSize=Number($('collectionExportCardSize').value);
+ return collectionExportNormalizePreferences(raw);
+}
+function collectionExportApplyPreferences(value){
+ const prefs=collectionExportNormalizePreferences(value);
+ for(const [key,id] of Object.entries(collectionExportPreferenceControls))$(id).checked=prefs[key];
+ $('collectionExportCardSize').value=String(prefs.cardSize);
+ collectionExportUpdateSummary();
+}
+function collectionExportSavePreferences(){
+ const prefs=collectionExportReadPreferences();
+ state.collectionExportPrefs=prefs;
+ // 순서대로 저장하여 체크를 빠르게 바꿔도 마지막 설정이 남도록 합니다.
+ collectionExportSaveQueue=collectionExportSaveQueue.catch(()=>{}).then(()=>
+  action('meta','put',{id:'collectionExportPrefsV1',values:prefs}));
+ return collectionExportSaveQueue;
+}
+function collectionExportSettingsChanged(){
+ collectionExportUpdateSummary();
+ collectionExportSavePreferences().catch(e=>{
+  console.error('사진 저장 설정 저장 실패',e);
+  toast('사진 저장 설정을 저장하지 못했습니다. 브라우저 저장 공간을 확인해 주세요.');
+ });
+}
 function collectionExportUpdateSummary(){
  const identity=$('collectionExportIdentity');
  if(!identity)return;
@@ -381,9 +429,11 @@ function wireCollection(){
   try{await collectionSave()}catch(err){console.error(err);toast('보유 상태 저장 실패: 다시 확인해 주세요')}
  });
  $('collectionClearFilters').addEventListener('click',()=>{collectionSinnerFilter='all';collectionOwnerFilter='all';collectionOrder='sinner';$('collectionSearch').value='';$('collectionRarity').value='';$('collectionSort').value='sinner';renderCollection()});
+ collectionExportApplyPreferences(state.collectionExportPrefs);
  $('collectionExportCardSize').addEventListener('input',collectionExportUpdateSummary);
+ $('collectionExportCardSize').addEventListener('change',collectionExportSettingsChanged);
  for(const id of ['collectionExportIdentity','collectionExportEgo','collectionExportRank1','collectionExportRank2','collectionExportRank3','collectionExportGroupBySinner']){
-  $(id).addEventListener('change',collectionExportUpdateSummary);
+  $(id).addEventListener('change',collectionExportSettingsChanged);
  }
  $('collectionDownloadPicture').addEventListener('click',collectionDownloadOwnedPicture);
  $('collectionCopy').addEventListener('click',async()=>{
