@@ -531,9 +531,9 @@ async function collectionDownloadOwnedPicture(){
     ctx.restore();
     if(i>0){
      const dividerX=x-sinnerColumnGap/2;
-     ctx.strokeStyle='#62716c';ctx.lineWidth=1;
-     // 수감자 열 구분선을 로고·이름 높이부터 사진 끝까지 이어줍니다.
-     ctx.beginPath();ctx.moveTo(dividerX,8);ctx.lineTo(dividerX,logicalHeight-footer);ctx.stroke();
+     ctx.strokeStyle='#83958b';ctx.lineWidth=1.5;
+     // 세로 열 경계는 로고·이름부터 모든 카드 끝까지 한 줄로 이어지도록 그립니다.
+     ctx.beginPath();ctx.moveTo(dividerX,0);ctx.lineTo(dividerX,logicalHeight-footer);ctx.stroke();
     }
     let columnY=head;
     columnY+=drawGrid(group.identities,1,x,columnY);
