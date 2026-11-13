@@ -336,8 +336,16 @@ function collectionExportUpdateSummary(){
   const box=$('collectionExportRank'+n);
   if(box)box.disabled=!identity.checked;
  }
+ const vertical=$('collectionExportVertical')?.checked===true;
+ const sinnerGrouping=$('collectionExportGroupBySinner');
+ if(sinnerGrouping){
+  // 세로 한 줄 내보내기는 항상 수감자별로 묶고 경계선을 보여줍니다.
+  // 세로 옵션을 끄면 일반 배치의 수감자 구분 설정을 다시 변경할 수 있습니다.
+  if(vertical)sinnerGrouping.checked=true;
+  sinnerGrouping.disabled=vertical;
+ }
  const split=$('collectionExportSplitSides');
- if(split)split.disabled=$('collectionExportGroupBySinner')?.checked!==true||$('collectionExportVertical')?.checked===true;
+ if(split)split.disabled=vertical||sinnerGrouping?.checked!==true;
  const size=collectionExportSizeSettings();
  const sizeValue=$('collectionExportCardSizeValue');
  if(sizeValue)sizeValue.textContent=size.percent+'%';
@@ -402,8 +410,8 @@ async function collectionDownloadOwnedPicture(){
   const ctx=canvas.getContext('2d');
   if(!ctx)throw new Error('브라우저에서 이미지 캔버스를 지원하지 않습니다');
   const {width,pad,cols,gap,cardW,factor}=collectionExportSizeSettings();
-  const grouped=$('collectionExportGroupBySinner')?.checked!==false;
   const vertical=$('collectionExportVertical')?.checked===true;
+  const grouped=vertical||$('collectionExportGroupBySinner')?.checked!==false;
   const splitSides=grouped&&!vertical&&$('collectionExportSplitSides')?.checked===true;
   const layoutCols=vertical?1:cols;
   const cropPercent=Number($('collectionExportCropPercent').value)||0;
@@ -425,7 +433,7 @@ async function collectionDownloadOwnedPicture(){
    {kind:'identity',items:identities},
    {kind:'ego',items:egos}
   ].filter(section=>section.items.length);
-  const head=8,footer=8,sectionGap=8,groupBreak=5,mixedGap=3;
+  const head=8,footer=8,sectionGap=8,groupBreak=vertical?16:5,mixedGap=3;
   const layoutCache=new WeakMap();
   const getLayout=(items,columnCount)=>{
    let cache=layoutCache.get(items);
