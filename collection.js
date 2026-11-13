@@ -436,7 +436,7 @@ async function collectionDownloadOwnedPicture(){
    {kind:'identity',items:identities},
    {kind:'ego',items:egos}
   ].filter(section=>section.items.length);
-  const head=vertical?48:8,footer=8,sectionGap=8,groupBreak=5,mixedGap=3;
+  const head=vertical?64:8,footer=8,sectionGap=8,groupBreak=5,mixedGap=3;
   const layoutCache=new WeakMap();
   const getLayout=(items,columnCount)=>{
    let cache=layoutCache.get(items);
@@ -481,18 +481,27 @@ async function collectionDownloadOwnedPicture(){
     const group=verticalGroups[i];
     const x=pad+i*(cardW+sinnerColumnGap);
     const name=sinnerNames.get(group.sinner)||group.sinner;
-    ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillStyle='#f0d5a3';
-    let fontSize=21;
-    while(fontSize>8){
+    ctx.save();
+    // 미리보기에서 12개 열을 한꺼번에 축소해도 헤더가 사라지지 않도록
+    // 별도 짙은 배경과 밝은 큰 글씨, 금색 밑줄을 둡니다.
+    ctx.fillStyle='#2b363a';
+    collectionPictureRounded(ctx,x,7,cardW,head-16,7);ctx.fill();
+    ctx.strokeStyle='#bfa16c';ctx.lineWidth=1;
+    collectionPictureRounded(ctx,x+0.5,7.5,cardW-1,head-17,7);ctx.stroke();
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle='#fff0c8';
+    ctx.shadowColor='#050807';ctx.shadowBlur=4;
+    let fontSize=27;
+    while(fontSize>9){
      ctx.font='900 '+fontSize+'px "Malgun Gothic",sans-serif';
-     if(ctx.measureText(name).width<=cardW-6)break;
+     if(ctx.measureText(name).width<=cardW-10)break;
      fontSize-=0.5;
     }
     ctx.font='900 '+fontSize+'px "Malgun Gothic",sans-serif';
-    ctx.fillText(name,x+cardW/2,head/2-2);
-    ctx.strokeStyle='#62716c';ctx.lineWidth=1;
-    ctx.beginPath();ctx.moveTo(x+3,head-7);ctx.lineTo(x+cardW-3,head-7);ctx.stroke();
+    ctx.fillText(name,x+cardW/2,head/2-1,cardW-10);
+    ctx.shadowBlur=0;
+    ctx.strokeStyle='#e1b975';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(x+4,head-5);ctx.lineTo(x+cardW-4,head-5);ctx.stroke();
     ctx.restore();
     if(i>0){
      const dividerX=x-sinnerColumnGap/2;
