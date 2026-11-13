@@ -73,21 +73,57 @@ function renderCollection(){
 }
 
 // PNG로 내보내는 보유 도감: 브라우저 저장소의 O 체크만 읽고 원본 데이터는 변경하지 않습니다.
-function collectionPictureWrap(ctx,value,maxWidth,maxLines=4){
- const chars=Array.from(String(value||'')),lines=[''];
- for(let i=0;i<chars.length;i++){
-  const c=chars[i],last=lines.length-1;
-  if(ctx.measureText(lines[last]+c).width>maxWidth&&lines[last]){
-   if(lines.length>=maxLines){
-    let s=lines[last];
-    while(s&&ctx.measureText(s+'…').width>maxWidth)s=s.slice(0,-1);
-    lines[last]=s+'…';
-    break;
+// PNG 이름은 띄어쓰기를 우선 존중하고, 카드 폭보다 긴 단어만 음절 단위로 나눕니다.
+// 말줄임표 없이 전체 이름을 표시하기 위해 카드 행 높이를 이름에 맞춰 계산합니다.
+function collectionPictureWrapWords(ctx,value,maxWidth){
+ const words=String(value||'').trim().replace(/\s+/g,' ').split(' ').filter(Boolean);
+ const lines=[];let line='';
+ const fits=value=>ctx.measureText(value).width<=maxWidth;
+ const flush=()=>{if(line){lines.push(line);line=''}};
+ for(const word of words){
+  const joined=line?line+' '+word:word;
+  if(fits(joined)){line=joined;continue}
+  flush();
+  if(fits(word)){line=word;continue}
+  const parts=word.split(/(?<=::)|(?<=\/)|(?<=-)/u).filter(Boolean);
+  for(const part of parts){
+   if(fits(line+part)){line+=part;continue}
+   flush();
+   if(fits(part)){line=part;continue}
+   for(const ch of Array.from(part)){
+    if(line&&!fits(line+ch))flush();
+    line+=ch;
    }
-   lines.push(c);
-  }else lines[last]+=c;
+  }
  }
- return lines.map(x=>x.trim()).filter(Boolean);
+ flush();
+ return lines;
+}
+function collectionPictureTitleLines(ctx,row,cardW,factor){
+ const identity=row.kind==='identity';
+ ctx.save();
+ ctx.font=(identity?'900 32px':'900 30px')+' "Malgun Gothic",sans-serif';
+ const lines=collectionPictureWrapWords(ctx,row.name,cardW/factor-16);
+ ctx.restore();
+ return lines.length?lines:[''];
+}
+function collectionPictureGridLayout(ctx,items,columns,cardW,gap,factor,cropPercent){
+ const cols=Math.max(1,columns),cells=[];let total=0;
+ for(let start=0;start<items.length;start+=cols){
+  const chunk=items.slice(start,start+cols);
+  const rowCells=chunk.map((row,i)=>{
+   const identity=row.kind==='identity';
+   const lines=collectionPictureTitleLines(ctx,row,cardW,factor);
+   const imageHeight=identity?
+    Math.round(cardW*370/240*(1-cropPercent/100)):Math.round(154*factor);
+   const titleHeight=Math.ceil(((identity?38:36)*lines.length+19+(identity?0:19))*factor);
+   return {row,x:i*(cardW+gap),lines,imageHeight,neededHeight:imageHeight+titleHeight};
+  });
+  const rowHeight=Math.max(...rowCells.map(item=>item.neededHeight));
+  rowCells.forEach(item=>cells.push({...item,y:total,height:rowHeight}));
+  total+=rowHeight+gap;
+ }
+ return {cells,height:items.length?total-gap:0};
 }
 function collectionPictureRounded(ctx,x,y,w,h,r){
  ctx.beginPath();
@@ -121,46 +157,56 @@ function collectionPictureDrawCover(ctx,img,x,y,w,h,position){
  ctx.drawImage(img,x+(w-sw)*center,y+(h-sh)*0.5,sw,sh);
  return true;
 }
-function collectionPictureCard(ctx,row,image,x,y,w,h,sinnerName,cardScale=1,cropPercent=0){
- // 카드 크기가 변해도 이름, 별, E.G.O 원형 비율을 함께 유지합니다.
+function collectionPictureCard(ctx,row,image,x,y,w,h,sinnerName,cardScale=1,cropPercent=0,titleLines=null){
+ // 이미지 카드 글씨는 기존 14/13px에서 32/30px로 확대한 저장 전용 렌더러입니다.
  if(cardScale!==1){
   ctx.save();ctx.translate(x,y);ctx.scale(cardScale,cardScale);
-  collectionPictureCard(ctx,row,image,0,0,w/cardScale,h/cardScale,sinnerName,1,cropPercent);
+  collectionPictureCard(ctx,row,image,0,0,w/cardScale,h/cardScale,sinnerName,1,cropPercent,titleLines);
   ctx.restore();return;
  }
  const identity=row.kind==='identity';
- const artworkHeight=identity&&cropPercent?h/(1-cropPercent/100):h;
+ const photoHeight=identity?Math.round(w*370/240*(1-cropPercent/100)):154;
  const border=identity?(row.rarity===3?'#d4a750':row.rarity===2?'#b14537':'#8b785a'):'#786447';
+ const lines=titleLines||collectionPictureTitleLines(ctx,row,w,1);
+ const lineHeight=identity?38:36;
+ const labelY=y+photoHeight+9;
  ctx.save();
  collectionPictureRounded(ctx,x,y,w,h,11);ctx.fillStyle='#151b20';ctx.fill();
  ctx.clip();
  if(identity){
-  if(image){collectionPictureDrawCover(ctx,image,x+2,y+2,w-4,artworkHeight-4,row.imagePosition)}
-  else {ctx.fillStyle='#a4b0b4';ctx.font='13px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillText('이미지 연결 실패',x+w/2,y+h/2)}
-  const grad=ctx.createLinearGradient(0,y+h*.47,0,y+h);
-  grad.addColorStop(0,'rgba(0,0,0,0)');grad.addColorStop(.65,'rgba(0,0,0,.65)');grad.addColorStop(1,'rgba(0,0,0,.93)');
-  ctx.fillStyle=grad;ctx.fillRect(x,y+h*.47,w,h*.53);
-  ctx.font='900 14px "Malgun Gothic",sans-serif';ctx.textAlign='center';
-  ctx.fillStyle='#ffdc6b';ctx.shadowColor='#000000';ctx.shadowBlur=4;
-  const lines=collectionPictureWrap(ctx,row.name,w-13,4);
-  const step=18;
-  lines.forEach((line,i)=>ctx.fillText(line,x+w/2,y+h-12-(lines.length-1-i)*step));
-  ctx.shadowBlur=0;
-  ctx.textAlign='left';ctx.font='900 16px "Malgun Gothic",sans-serif';ctx.fillStyle='#ffdb75';
-  ctx.fillText('★'.repeat(row.rarity),x+8,y+19);
+  if(image){
+   const fullArtworkHeight=photoHeight/(1-cropPercent/100);
+   collectionPictureDrawCover(ctx,image,x+2,y+2,w-4,fullArtworkHeight-4,row.imagePosition);
+  }else{
+   ctx.fillStyle='#a4b0b4';ctx.font='13px "Malgun Gothic",sans-serif';ctx.textAlign='center';
+   ctx.fillText('이미지 연결 실패',x+w/2,y+photoHeight/2);
+  }
+  ctx.textAlign='left';ctx.font='900 16px "Malgun Gothic",sans-serif';
+  ctx.fillStyle='#ffdb75';ctx.shadowColor='#000';ctx.shadowBlur=3;
+  ctx.fillText('★'.repeat(row.rarity),x+8,y+19);ctx.shadowBlur=0;
  }else{
   const cx=x+w/2,cy=y+79,r=65;
   ctx.save();ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.clip();
   if(image)collectionPictureDrawCover(ctx,image,cx-r,cy-r,2*r,2*r,'50% center');
-  else{ctx.fillStyle='#263039';ctx.fillRect(cx-r,cy-r,2*r,2*r);ctx.fillStyle='#b3babe';ctx.font='12px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.fillText('이미지 연결 실패',cx,cy)}
+  else{
+   ctx.fillStyle='#263039';ctx.fillRect(cx-r,cy-r,2*r,2*r);
+   ctx.fillStyle='#b3babe';ctx.font='12px "Malgun Gothic",sans-serif';
+   ctx.textAlign='center';ctx.fillText('이미지 연결 실패',cx,cy);
+  }
   ctx.restore();
   ctx.beginPath();ctx.arc(cx,cy,r+1,0,Math.PI*2);
-  ctx.strokeStyle=({ZAYIN:'#99764c',TETH:'#c17e3c',HE:'#9f61bc',WAW:'#d36c45',ALEPH:'#dc4545'})[row.rarity]||'#a17b4e';ctx.lineWidth=4;ctx.stroke();
-  ctx.textAlign='center';ctx.fillStyle='#ffda70';ctx.font='800 13px "Malgun Gothic",sans-serif';
-  const lines=collectionPictureWrap(ctx,row.name,w-12,2);
-  lines.forEach((line,i)=>ctx.fillText(line,cx,y+170+i*16));
+  ctx.strokeStyle=({ZAYIN:'#99764c',TETH:'#c17e3c',HE:'#9f61bc',WAW:'#d36c45',ALEPH:'#dc4545'})[row.rarity]||'#a17b4e';
+  ctx.lineWidth=4;ctx.stroke();
+ }
+ // 커진 이름은 사진 밖의 어두운 영역에 두어 일러스트를 가리지 않습니다.
+ ctx.fillStyle='#10191e';ctx.fillRect(x,y+photoHeight,w,h-photoHeight);
+ ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle='#ffdf85';
+ ctx.font=(identity?'900 32px':'900 30px')+' "Malgun Gothic",sans-serif';
+ lines.forEach((line,i)=>ctx.fillText(line,x+w/2,labelY+i*lineHeight));
+ ctx.textBaseline='alphabetic';
+ if(!identity){
   ctx.fillStyle='#aab3b8';ctx.font='11px "Malgun Gothic",sans-serif';
-  ctx.fillText(row.rarity+(sinnerName?' · '+sinnerName:''),cx,y+h-12);
+  ctx.fillText(row.rarity+(sinnerName?' · '+sinnerName:''),x+w/2,labelY+lines.length*lineHeight+8);
  }
  ctx.restore();
  ctx.strokeStyle=border;ctx.lineWidth=2;
@@ -342,8 +388,7 @@ async function collectionDownloadOwnedPicture(){
   const splitSides=grouped&&$('collectionExportSplitSides')?.checked===true;
   const cropPercent=Number($('collectionExportCropPercent').value)||0;
   const groups=grouped?collectionExportSinnerGroups(identities,egos,sinners):[];
-  // 좌우 분할에서는 실제 보유 카드 열 수만큼만 폭을 차지하게 합니다.
-  // 각 영역이 반쪽 폭을 무조건 점유하면 카드가 적은 쪽에 거대한 빈 공간이 생깁니다.
+  // 기존 분할 구성과 카드 크기 설정은 유지하고, 이름 줄 수에 맞춰 행 높이만 계산합니다.
   const splitGroups=splitSides?collectionExportSplitSinnerGroups(groups):[];
   const availableSideWidth=(width-pad*2-12)/2;
   const maxSideCols=Math.max(1,Math.floor((availableSideWidth+gap+0.001)/(cardW+gap)));
@@ -355,32 +400,29 @@ async function collectionDownloadOwnedPicture(){
   const sideGap=sideWidths.length===2&&sideWidths[0]&&sideWidths[1]?8:0;
   const exportWidth=splitSides?Math.ceil(pad*2+sideWidths.reduce((sum,w)=>sum+w,0)+sideGap):width;
   const sidePositions=[pad,pad+(sideWidths[0]||0)+sideGap];
-  const identityHeight=Math.round(cardW*370/240*(1-cropPercent/100)),egoHeight=Math.round(230*factor);
   const sections=[
-   {kind:'identity',items:identities,title:'인격',height:identityHeight},
-   {kind:'ego',items:egos,title:'E.G.O',height:egoHeight}
+   {kind:'identity',items:identities},
+   {kind:'ego',items:egos}
   ].filter(section=>section.items.length);
-  // 저장 이미지에는 상단 제목/집계와 하단 출처 문구를 넣지 않습니다.
-  const head=8,footer=8,sectionGap=8;
-  // 수감자 사이에는 1px 선이 들어갈 최소한의 공간만 유지합니다.
-  const groupBreak=5,mixedGap=3;
-  const groupedBlockHeight=(items,height,columnCount=cols)=>{
-   const count=Math.ceil(items.length/columnCount);
-   return count?count*height+(count-1)*gap:0;
+  const head=8,footer=8,sectionGap=8,groupBreak=5,mixedGap=3;
+  const layoutCache=new WeakMap();
+  const getLayout=(items,columnCount)=>{
+   let cache=layoutCache.get(items);
+   if(!cache){cache=new Map();layoutCache.set(items,cache)}
+   const actualCols=Math.max(1,columnCount);
+   if(!cache.has(actualCols))cache.set(actualCols,collectionPictureGridLayout(ctx,items,actualCols,cardW,gap,factor,cropPercent));
+   return cache.get(actualCols);
   };
-  const groupContentHeight=(group,columnCount=cols)=>groupedBlockHeight(group.identities,identityHeight,columnCount)+
+  const groupHeight=(group,columnCount)=>getLayout(group.identities,columnCount).height+
    (group.identities.length&&group.egos.length?mixedGap:0)+
-   groupedBlockHeight(group.egos,egoHeight,columnCount);
-  const groupsHeight=(items,columnCount)=>items.reduce((sum,group,i)=>
-   sum+(i?groupBreak:0)+groupContentHeight(group,columnCount),0);
+   getLayout(group.egos,columnCount).height;
+  const groupsHeight=(items,columnCount)=>items.reduce((sum,group,i)=>sum+(i?groupBreak:0)+groupHeight(group,columnCount),0);
   const contentHeight=splitSides?
    Math.max(...splitGroups.map((side,i)=>groupsHeight(side,sideColumnCounts[i]||1))):
    grouped?groupsHeight(groups,cols):
-   sections.reduce((sum,section,i)=>sum+(i?sectionGap:0)+groupedBlockHeight(section.items,section.height),0);
+   sections.reduce((sum,section,i)=>sum+(i?sectionGap:0)+getLayout(section.items,cols).height,0);
   const logicalHeight=head+contentHeight+footer;
   if(logicalHeight>30000)throw new Error('보유 이미지가 너무 길어 저장할 수 없습니다. 수감자를 선택해 나눠 저장해 주세요');
-  // 기존 고정 1120px PNG를 3배/2배 픽셀 밀도로 렌더링합니다.
-  // 긴 이미지에서 브라우저 최대 캔버스 크기 및 메모리 사용을 제한합니다.
   const pixelBudget=90000000,maxEdge=30000;
   const outputScale=[3,2,1].find(n=>
    exportWidth*n<=maxEdge&&logicalHeight*n<=maxEdge&&exportWidth*logicalHeight*n*n<=pixelBudget);
@@ -391,85 +433,58 @@ async function collectionDownloadOwnedPicture(){
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
   ctx.fillStyle='#0c1216';ctx.fillRect(0,0,exportWidth,logicalHeight);
   const loadedMap=new Map(allRows.map((row,i)=>[row.id,images[i]]));
-  let y=head;
+  const drawGrid=(items,columnCount,x,y,sinnerName='')=>{
+   const current=getLayout(items,columnCount);
+   for(const item of current.cells){
+    collectionPictureCard(ctx,item.row,loadedMap.get(item.row.id),x+item.x,y+item.y,cardW,item.height,
+     sinnerName,factor,cropPercent,item.lines);
+   }
+   return current.height;
+  };
   if(splitSides){
-   // 같은 PNG의 왼쪽: 이상·파우스트·돈키호테·료슈·뫼르소·홍루 / 오른쪽: 히스클리프부터 그레고르.
-   // 두 영역은 독립적인 높이로 쌓으며, 영역 내부 수감자 사이는 기존처럼 5px만 띄웁니다.
    if(sideGap){
     const centerX=sidePositions[1]-sideGap/2;
     ctx.strokeStyle='#4c5c59';ctx.lineWidth=1;
     ctx.beginPath();ctx.moveTo(centerX,head);ctx.lineTo(centerX,logicalHeight-footer);ctx.stroke();
    }
    for(let sideIndex=0;sideIndex<2;sideIndex++){
-    const sideX=sidePositions[sideIndex],sideCols=sideColumnCounts[sideIndex]||1;
-    const sideWidth=sideWidths[sideIndex];
-    let sideY=head;
-    const sideGroups=splitGroups[sideIndex];
-    for(let groupIndex=0;groupIndex<sideGroups.length;groupIndex++){
-     const group=sideGroups[groupIndex];
-     if(groupIndex>0){
-      const dividerY=sideY+groupBreak/2;
+    const sideX=sidePositions[sideIndex],sideCols=sideColumnCounts[sideIndex]||1,sideWidth=sideWidths[sideIndex];
+    let y=head;
+    for(const [groupIndex,group] of splitGroups[sideIndex].entries()){
+     if(groupIndex){
+      const dividerY=y+groupBreak/2;
       ctx.strokeStyle='#62716c';ctx.lineWidth=1;
       ctx.beginPath();ctx.moveTo(sideX+3,dividerY);ctx.lineTo(sideX+sideWidth-3,dividerY);ctx.stroke();
-      sideY+=groupBreak;
+      y+=groupBreak;
      }
-     for(let i=0;i<group.identities.length;i++){
-      const row=group.identities[i];
-      const x=sideX+(i%sideCols)*(cardW+gap);
-      const cy=sideY+Math.floor(i/sideCols)*(identityHeight+gap);
-      collectionPictureCard(ctx,row,loadedMap.get(row.id),x,cy,cardW,identityHeight,'',factor,cropPercent);
-     }
-     sideY+=groupedBlockHeight(group.identities,identityHeight,sideCols);
-     if(group.identities.length&&group.egos.length)sideY+=mixedGap;
-     for(let i=0;i<group.egos.length;i++){
-      const row=group.egos[i];
-      const x=sideX+(i%sideCols)*(cardW+gap);
-      const cy=sideY+Math.floor(i/sideCols)*(egoHeight+gap);
-      collectionPictureCard(ctx,row,loadedMap.get(row.id),x,cy,cardW,egoHeight,'',factor,cropPercent);
-     }
-     sideY+=groupedBlockHeight(group.egos,egoHeight,sideCols);
+     y+=drawGrid(group.identities,sideCols,sideX,y);
+     if(group.identities.length&&group.egos.length)y+=mixedGap;
+     y+=drawGrid(group.egos,sideCols,sideX,y);
     }
    }
   }else if(grouped){
-   // 수감자별 인격 카드 다음에 그 수감자의 원형 E.G.O를 배치합니다.
-   // 수감자 이름/번호는 쓰지 않고 가로 구분선과 여백만 추가합니다.
-   for(let g=0;g<groups.length;g++){
-    const group=groups[g];
-    if(g>0){
+   let y=head;
+   for(const [i,group] of groups.entries()){
+    if(i){
      const dividerY=y+groupBreak/2;
      ctx.strokeStyle='#62716c';ctx.lineWidth=1;
      ctx.beginPath();ctx.moveTo(pad+12,dividerY);ctx.lineTo(width-pad-12,dividerY);ctx.stroke();
      y+=groupBreak;
     }
-    for(let i=0;i<group.identities.length;i++){
-     const row=group.identities[i],x=pad+(i%cols)*(cardW+gap);
-     const cy=y+Math.floor(i/cols)*(identityHeight+gap);
-     collectionPictureCard(ctx,row,loadedMap.get(row.id),x,cy,cardW,identityHeight,'',factor,cropPercent);
-    }
-    y+=groupedBlockHeight(group.identities,identityHeight);
+    y+=drawGrid(group.identities,cols,pad,y);
     if(group.identities.length&&group.egos.length)y+=mixedGap;
-    for(let i=0;i<group.egos.length;i++){
-     const row=group.egos[i],x=pad+(i%cols)*(cardW+gap);
-     const cy=y+Math.floor(i/cols)*(egoHeight+gap);
-     collectionPictureCard(ctx,row,loadedMap.get(row.id),x,cy,cardW,egoHeight,'',factor,cropPercent);
-    }
-    y+=groupedBlockHeight(group.egos,egoHeight);
+    y+=drawGrid(group.egos,cols,pad,y);
    }
   }else{
-   // 구분 끔: 인격/E.G.O 카드만 저장하며 제목·개수·출처 텍스트는 넣지 않습니다.
-   for(let sectionIndex=0;sectionIndex<sections.length;sectionIndex++){
-    const section=sections[sectionIndex];
-    if(sectionIndex){
+   let y=head;
+   for(const [i,section] of sections.entries()){
+    if(i){
      const dividerY=y+sectionGap/2;
      ctx.strokeStyle='#62716c';ctx.lineWidth=1;
      ctx.beginPath();ctx.moveTo(pad+12,dividerY);ctx.lineTo(width-pad-12,dividerY);ctx.stroke();
      y+=sectionGap;
     }
-    for(let i=0;i<section.items.length;i++){
-     const row=section.items[i],x=pad+(i%cols)*(cardW+gap),cy=y+Math.floor(i/cols)*(section.height+gap);
-     collectionPictureCard(ctx,row,loadedMap.get(row.id),x,cy,cardW,section.height,sinners.find(s=>s.id===row.sinner)?.name||'',factor,cropPercent);
-    }
-    y+=groupedBlockHeight(section.items,section.height);
+    y+=drawGrid(section.items,cols,pad,y);
    }
   }
   const failed=images.filter(img=>!img).length;
