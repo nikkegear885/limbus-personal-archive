@@ -351,7 +351,7 @@ async function collectionDownloadOwnedPicture(){
   const cropPercent=Number($('collectionExportCropPercent').value)||0;
   const groups=grouped?collectionExportSinnerGroups(identities,egos,sinners):[];
   // 캔버스 폭은 기존과 동일. 양쪽 영역 안에서 각각 카드 열 수를 계산합니다.
-  const sideGap=20,sideWidth=(width-pad*2-sideGap)/2;
+  const sideGap=12,sideWidth=(width-pad*2-sideGap)/2;
   const sideCols=Math.max(1,Math.floor((sideWidth+gap+0.001)/(cardW+gap)));
   const splitGroups=splitSides?collectionExportSplitSinnerGroups(groups):[];
   const identityHeight=Math.round(cardW*370/240*(1-cropPercent/100)),egoHeight=Math.round(230*factor);
