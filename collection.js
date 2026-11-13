@@ -610,6 +610,14 @@ function wireCollection(){
   return '<button type="button" class="collection-filter collection-sinner-tab'+(selected?' selected':'')+'" data-collection-sinner="'+esc(id)+'">'+badge+'<span class="collection-sinner-name">'+esc(name)+'</span><span class="collection-sinner-count"><span data-collection-count="identity">인격 0/0</span><span data-collection-count="ego">E.G.O 0/0</span></span></button>';
  };
  $('collectionSinnerTabs').innerHTML=sinnerTab('all','전체',true)+sinners.map(s=>sinnerTab(s.id,s.name,false)).join('');
+ // 첫 이미지 서버에 문제가 있으면 CDN 미러로 다시 요청합니다.
+ $('collectionSinnerTabs').addEventListener('error',e=>{
+  const img=e.target;
+  if(!(img instanceof HTMLImageElement)||!img.classList.contains('collection-sinner-logo'))return;
+  const backup=img.dataset.collectionBackup;
+  if(backup&&!img.dataset.collectionRetried){img.dataset.collectionRetried='1';img.src=backup;return}
+  img.style.visibility='hidden';
+ },true);
  $('collectionSinnerTabs').addEventListener('click',e=>{const b=e.target.closest('button[data-collection-sinner]');if(!b)return;collectionSinnerFilter=b.dataset.collectionSinner;renderCollection()});
  $('collectionMode').addEventListener('click',e=>{const b=e.target.closest('button[data-collection-kind]');if(!b)return;collectionKind=b.dataset.collectionKind;$('collectionRarity').innerHTML=collectionKind==='identity'?'<option value="">전체 등급</option><option value="3">3성</option><option value="2">2성</option><option value="1">1성</option>':'<option value="">전체 등급</option><option>ZAYIN</option><option>TETH</option><option>HE</option><option>WAW</option><option>ALEPH</option>';$('collectionRarity').value='';renderCollection()});
  $('collectionOwnershipFilters').addEventListener('click',e=>{const b=e.target.closest('button[data-collection-owner]');if(!b)return;collectionOwnerFilter=b.dataset.collectionOwner;renderCollection()});
