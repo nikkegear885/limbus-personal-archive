@@ -121,14 +121,8 @@ function collectionPictureDrawCover(ctx,img,x,y,w,h,position){
  ctx.drawImage(img,x+(w-sw)*center,y+(h-sh)*0.5,sw,sh);
  return true;
 }
-function collectionPictureOwnedMark(ctx,x,y){
- ctx.fillStyle='#0c6949';ctx.strokeStyle='#f6deaa';ctx.lineWidth=2.5;
- ctx.beginPath();ctx.arc(x,y,15,0,Math.PI*2);ctx.fill();ctx.stroke();
- ctx.fillStyle='#ffffff';ctx.font='900 18px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('O',x,y+1);
- ctx.textBaseline='alphabetic';
-}
 function collectionPictureCard(ctx,row,image,x,y,w,h,sinnerName,cardScale=1,cropPercent=0){
- // 카드 크기가 변해도 이름, 별, O 배지, E.G.O 원형 비율을 함께 유지합니다.
+ // 카드 크기가 변해도 이름, 별, E.G.O 원형 비율을 함께 유지합니다.
  if(cardScale!==1){
   ctx.save();ctx.translate(x,y);ctx.scale(cardScale,cardScale);
   collectionPictureCard(ctx,row,image,0,0,w/cardScale,h/cardScale,sinnerName,1,cropPercent);
@@ -154,7 +148,6 @@ function collectionPictureCard(ctx,row,image,x,y,w,h,sinnerName,cardScale=1,crop
   ctx.shadowBlur=0;
   ctx.textAlign='left';ctx.font='900 16px "Malgun Gothic",sans-serif';ctx.fillStyle='#ffdb75';
   ctx.fillText('★'.repeat(row.rarity),x+8,y+19);
-  collectionPictureOwnedMark(ctx,x+w-20,y+19);
  }else{
   const cx=x+w/2,cy=y+79,r=65;
   ctx.save();ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.clip();
@@ -163,7 +156,6 @@ function collectionPictureCard(ctx,row,image,x,y,w,h,sinnerName,cardScale=1,crop
   ctx.restore();
   ctx.beginPath();ctx.arc(cx,cy,r+1,0,Math.PI*2);
   ctx.strokeStyle=({ZAYIN:'#99764c',TETH:'#c17e3c',HE:'#9f61bc',WAW:'#d36c45',ALEPH:'#dc4545'})[row.rarity]||'#a17b4e';ctx.lineWidth=4;ctx.stroke();
-  collectionPictureOwnedMark(ctx,x+w-20,y+19);
   ctx.textAlign='center';ctx.fillStyle='#ffda70';ctx.font='800 13px "Malgun Gothic",sans-serif';
   const lines=collectionPictureWrap(ctx,row.name,w-12,2);
   lines.forEach((line,i)=>ctx.fillText(line,cx,y+170+i*16));
