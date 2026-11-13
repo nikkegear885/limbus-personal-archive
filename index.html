@@ -52,6 +52,13 @@
 .collection-filter{border:1px solid #445157;background:#1c272b;color:#bbc8c6;border-radius:9px;padding:8px 13px;font-size:12px;white-space:nowrap}
 .collection-filter:hover{background:#2c383b}
 .collection-filter.selected{border-color:var(--accent);background:#4a3f2d;color:#ffe0a9;font-weight:800}
+
+#collectionSinnerTabs .collection-sinner-tab{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:8px 12px;min-width:132px;white-space:normal;line-height:1.25}
+#collectionSinnerTabs .collection-sinner-name{font-size:12px;font-weight:800;white-space:nowrap}
+#collectionSinnerTabs .collection-sinner-count{display:flex;flex-wrap:nowrap;align-items:center;justify-content:center;gap:7px;font-size:10px;font-weight:600;color:#aebfbc;white-space:nowrap;font-variant-numeric:tabular-nums}
+#collectionSinnerTabs .collection-sinner-tab.selected .collection-sinner-count{color:#f2d5a3}
+@media(max-width:570px){#collectionSinnerTabs{gap:5px}#collectionSinnerTabs .collection-sinner-tab{min-width:calc((100% - 10px)/3);padding:7px 4px}#collectionSinnerTabs .collection-sinner-name{font-size:11px}#collectionSinnerTabs .collection-sinner-count{font-size:9px;gap:5px}}
+
 .collection-toolbar{display:flex;flex-wrap:wrap;gap:9px;margin:18px 0}
 .collection-toolbar input{flex:3;min-width:190px}
 .collection-toolbar select{flex:1;min-width:130px}
@@ -145,8 +152,8 @@
 <div class="overlay" id="runOverlay"><div class="dialog" style="max-width:560px" role="dialog" aria-modal="true"><div class="dialog-head"><h2>거울던전 회차 편집</h2><button class="btn small quiet" id="runEditClose">✕ 닫기</button></div><div class="dialog-body"><div class="form-grid"><div class="field wide"><label for="runName">회차 이름</label><input id="runName" placeholder="예: 3회차 · 호흡 테스트"></div><div class="field wide"><label for="runStartAt">시작 시각</label><input id="runStartAt" type="datetime-local" step="1"></div><div class="field"><label for="runFloor3">3층 클리어</label><input id="runFloor3" type="datetime-local" step="1"></div><div class="field"><label for="runFloor4">4층 시작</label><input id="runFloor4" type="datetime-local" step="1"></div><div class="field wide"><label for="runFloor5">5층 클리어</label><input id="runFloor5" type="datetime-local" step="1"></div><div class="field wide"><label for="runMemo">메모</label><textarea id="runMemo" rows="3" placeholder="사용한 덱, 기프트, 실패 원인 등을 적어두세요"></textarea><small>비워 둔 단계는 '기록 없음'으로 표시됩니다.</small></div></div></div><div class="dialog-foot"><button class="btn quiet" id="runEditCancel">취소</button><button class="btn primary" id="runEditSave">저장</button></div></div></div>
 <div class="image-lightbox" id="lightbox"><img id="lightboxImg" alt="확대 이미지"></div>
 <input type="file" id="photoInput" accept="image/*" multiple hidden><input type="file" id="restoreInput" accept="application/json,.json" hidden>
-<script src="collection-data.js?v=20261113-owned-png1"></script>
-<script src="collection.js?v=20261113-owned-png1"></script>
+<script src="collection-data.js?v=20261113-sinner-counts1"></script>
+<script src="collection.js?v=20261113-sinner-counts1"></script>
 <script>
 'use strict';
 const CATEGORIES=['거울던전','E.G.O 기프트','덱·인격','테마팩','스토리','기타'];
