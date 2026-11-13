@@ -77,7 +77,7 @@ function renderCollection(){
   if(row.kind==='identity'){
    return '<button type="button" class="collection-card identity-card rarity-'+row.rarity+(owned?' owned':'')+'"'+attributes+'><span class="collection-image">'+pic+'<span class="collection-card-grade">'+esc('★'.repeat(row.rarity))+'</span><span class="collection-owned-mark">'+(owned?'O':'')+'</span><span class="collection-name-overlay">'+esc(row.name)+'</span></span></button>';
   }
-  return '<button type="button" class="collection-card ego-card ego-rank-'+esc(String(row.rarity).toLowerCase())+(owned?' owned':'')+'"'+attributes+'><span class="collection-ego-wrap"><span class="collection-image collection-ego-circle">'+pic+'<span class="collection-owned-mark">'+(owned?'O':'')+'</span></span></span><span class="collection-ego-name">'+esc(row.name)+'</span><span class="collection-ego-meta">'+esc(row.rarity)+' · '+esc(sinner)+'</span></button>';
+  return '<button type="button" class="collection-card ego-card ego-rank-'+esc(String(row.rarity).toLowerCase())+(owned?' owned':'')+'"'+attributes+'><span class="collection-ego-wrap"><span class="collection-image collection-ego-circle">'+pic+'<span class="collection-owned-mark">'+(owned?'O':'')+'</span><span class="collection-ego-name">'+esc(row.name)+'</span></span></span><span class="collection-ego-meta">'+esc(row.rarity)+' · '+esc(sinner)+'</span></button>';
  }).join(''):'<div class="collection-empty">조건에 맞는 항목이 없습니다. 필터를 초기화해 보세요.</div>';
  document.querySelectorAll('[data-collection-kind]').forEach(b=>b.classList.toggle('selected',b.dataset.collectionKind===collectionKind));
  document.querySelectorAll('[data-collection-owner]').forEach(b=>b.classList.toggle('selected',b.dataset.collectionOwner===collectionOwnerFilter));
@@ -118,13 +118,15 @@ function collectionPictureTitleLayout(ctx,row,cardW,factor,cropPercent){
  const innerWidth=cardW/factor;
  const innerHeight=identity?Math.round(innerWidth*370/240*(1-cropPercent/100)):230;
  const baseFont=identity?20.48:19.2; // 직전 PNG 이름 크기에서 추가로 20% 축소
- const bottomInset=identity?9:24;
- const maxTextHeight=innerHeight-(identity?30:19)-bottomInset;
+ const bottomInset=identity?9:7;
+ // E.G.O는 이름이 원형 사진 내부에 들어가므로 폭과 줄 높이 제한을 원 안쪽 기준으로 계산합니다.
+ const maxTextHeight=identity?innerHeight-30-bottomInset:76;
+ const titleMaxWidth=identity?innerWidth-16:110;
  let result=null;
  ctx.save();
  for(let font=baseFont;font>=8;font-=0.5){
   ctx.font='900 '+font+'px "Malgun Gothic",sans-serif';
-  const lines=collectionPictureWrapWords(ctx,row.name,innerWidth-16);
+  const lines=collectionPictureWrapWords(ctx,row.name,titleMaxWidth);
   const lineHeight=Math.ceil(font*1.17);
   const height=lines.length*lineHeight;
   result={lines,fontSize:font,lineHeight,bottomInset};
@@ -141,7 +143,7 @@ function collectionPictureGridLayout(ctx,items,columns,cardW,gap,factor,cropPerc
    const identity=row.kind==='identity';
    const title=collectionPictureTitleLayout(ctx,row,cardW,factor,cropPercent);
    const height=identity?
-    Math.round(cardW*370/240*(1-cropPercent/100)):Math.round(230*factor);
+    Math.round(cardW*370/240*(1-cropPercent/100)):Math.round(176*factor);
    return {row,x:i*(cardW+gap),title,height};
   });
   const rowHeight=Math.max(...rowCells.map(item=>item.height));
@@ -218,18 +220,25 @@ function collectionPictureCard(ctx,row,image,x,y,w,h,sinnerName,cardScale=1,crop
   ctx.lineWidth=4;ctx.stroke();
  }
  const titleHeight=title.lines.length*title.lineHeight;
- const top=y+h-title.bottomInset-titleHeight;
- const gradient=ctx.createLinearGradient(0,Math.max(y,top-22),0,y+h);
+ // 인격은 카드 하단, E.G.O는 원형 사진의 하단에 이름을 겹쳐 그립니다.
+ const photoBottom=identity?y+h:y+144;
+ const top=photoBottom-title.bottomInset-titleHeight;
+ const shadeTop=Math.max(y,top-20);
+ ctx.save();
+ if(!identity){
+  ctx.beginPath();ctx.arc(x+w/2,y+79,64,0,Math.PI*2);ctx.clip();
+ }
+ const gradient=ctx.createLinearGradient(0,shadeTop,0,photoBottom);
  gradient.addColorStop(0,'rgba(0,0,0,0)');
- gradient.addColorStop(0.35,'rgba(0,0,0,.48)');
+ gradient.addColorStop(0.35,'rgba(0,0,0,.52)');
  gradient.addColorStop(1,'rgba(0,0,0,.94)');
  ctx.fillStyle=gradient;
- ctx.fillRect(x,Math.max(y,top-22),w,Math.min(h,y+h-Math.max(y,top-22)));
+ ctx.fillRect(x,shadeTop,w,photoBottom-shadeTop);
  ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle='#ffdf85';
  ctx.shadowColor='#000';ctx.shadowBlur=3;
  ctx.font='900 '+title.fontSize+'px "Malgun Gothic",sans-serif';
  title.lines.forEach((line,i)=>ctx.fillText(line,x+w/2,top+i*title.lineHeight));
- ctx.shadowBlur=0;ctx.textBaseline='alphabetic';
+ ctx.restore();
  if(identity){
   ctx.textAlign='left';ctx.font='900 16px "Malgun Gothic",sans-serif';
   ctx.fillStyle='#ffdb75';ctx.shadowColor='#000';ctx.shadowBlur=3;
