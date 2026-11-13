@@ -97,6 +97,18 @@
 .collection-ego-meta{display:block;width:100%;color:#9fa8aa;font-size:10px;text-align:center}
 .collection-ego-circle .collection-owned-mark{top:5px;right:4px}
 .collection-empty{grid-column:1/-1;border:1px dashed #516066;padding:50px 12px;text-align:center;border-radius:12px;color:var(--muted)}
+
+.collection-export-panel{border:1px solid #46514d;background:#172222;border-radius:12px;padding:12px 14px;margin:12px 0 16px}
+.collection-export-line{display:flex;align-items:center;gap:9px 12px;flex-wrap:wrap}
+.collection-export-label{font-size:12px;font-weight:800;color:#e8d6ae}
+.collection-export-check{display:inline-flex;align-items:center;gap:5px;border:1px solid #40504c;border-radius:8px;padding:7px 10px;background:#21302e;font-size:12px;font-weight:650;color:#e4e9e1;cursor:pointer;white-space:nowrap;user-select:none}
+.collection-export-check:has(input:checked){border-color:#ad9157;background:#453d2d;color:#ffdf9d}
+.collection-export-check:has(input:disabled){opacity:.4;cursor:not-allowed}
+.collection-export-check input{width:15px;height:15px;min-width:15px;margin:0;padding:0;accent-color:#c8a463;cursor:inherit;box-shadow:none}
+.collection-export-separator{width:1px;height:22px;background:#53615b;margin:0 2px}
+.collection-export-note{display:flex;justify-content:space-between;flex-wrap:wrap;gap:5px 16px;margin-top:9px;font-size:11px;color:#a0b3af;line-height:1.6}
+#collectionExportSummary{color:#f2d39a;font-weight:780}
+@media(max-width:570px){.collection-export-panel{padding:11px 9px}.collection-export-line{gap:6px}.collection-export-separator{width:100%;height:1px;margin:4px 0}.collection-export-check{font-size:11px;padding:7px 8px}}
 .collection-footnote{font-size:11px;color:#8c9e9f;line-height:1.75;margin-top:20px}
 @media(max-width:570px){.collection-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.collection-topstats{grid-template-columns:repeat(2,minmax(0,1fr))}.collection-filter{padding:7px 9px;font-size:11px}.collection-name-overlay{min-height:60px;font-size:10.5px;padding:28px 5px 7px}.collection-card-grade{font-size:11px;top:5px;left:5px}.collection-owned-mark{width:24px;height:24px;top:5px;right:5px;font-size:14px}.collection-card.ego-card{padding:7px 4px 10px}.collection-ego-circle{width:min(100%,115px)}.collection-ego-name{font-size:11px}}
 </style>
@@ -138,8 +150,12 @@
       <div id="collectionSinnerTabs" class="collection-filter-line" aria-label="수감자 선택"></div>
       <div id="collectionOwnershipFilters" class="collection-filter-line"><button class="collection-filter selected" data-collection-owner="all" type="button">전체</button><button class="collection-filter" data-collection-owner="owned" type="button">보유만</button><button class="collection-filter" data-collection-owner="unowned" type="button">미보유만</button></div>
       <div class="collection-toolbar"><input id="collectionSearch" placeholder="인격 · E.G.O 이름 검색" aria-label="보유 도감 이름 검색"><select id="collectionRarity" aria-label="등급 선택"><option value="">전체 등급</option><option value="3">3성</option><option value="2">2성</option><option value="1">1성</option></select><select id="collectionSort" aria-label="정렬"><option value="sinner">수감자별 · 최신순</option><option value="name">이름순</option></select><button type="button" class="btn small" id="collectionClearFilters">필터 초기화</button></div>
-      <div class="toolbar"><div><div class="section-title" id="collectionStatus">보유 현황</div><div class="subtext" id="collectionVisible"></div></div><div class="top-actions"><button class="btn small primary" id="collectionDownloadPicture" type="button" title="현재 인격/E.G.O 탭과 선택한 수감자의 O 보유 항목만 PNG 이미지로 저장합니다. 검색·등급·보유 필터는 저장 범위에 영향을 주지 않습니다.">▧ 보유 사진 저장</button><button class="btn small" id="collectionCopy" type="button">보유 목록 복사</button></div></div>
-      <div class="subtext" style="margin-top:-9px">사진 저장: 현재 탭의 보유 항목만 사진으로 저장합니다. 수감자를 선택하면 해당 수감자만 포함됩니다.</div>
+      <div class="collection-export-panel" id="collectionExportPanel" aria-label="보유 사진 저장 설정">
+        <div class="collection-export-line"><strong class="collection-export-label">사진 저장 항목</strong><label class="collection-export-check"><input type="checkbox" id="collectionExportIdentity" checked> 인격</label><label class="collection-export-check"><input type="checkbox" id="collectionExportEgo" checked> E.G.O</label><span class="collection-export-separator" aria-hidden="true"></span><span class="collection-export-label">인격 등급</span><label class="collection-export-check"><input type="checkbox" id="collectionExportRank1" checked> ★</label><label class="collection-export-check"><input type="checkbox" id="collectionExportRank2" checked> ★★</label><label class="collection-export-check"><input type="checkbox" id="collectionExportRank3" checked> ★★★</label></div>
+        <div class="collection-export-note"><span id="collectionExportSummary" aria-live="polite">저장 대상 계산 중…</span><span>보유 O만 저장 · 수감자 선택 반영 · 화면의 검색·등급 필터와 별도</span></div>
+      </div>
+      <div class="toolbar"><div><div class="section-title" id="collectionStatus">보유 현황</div><div class="subtext" id="collectionVisible"></div></div><div class="top-actions"><button class="btn small primary" id="collectionDownloadPicture" type="button" title="아래 사진 저장 설정에서 선택한 인격·E.G.O 보유 항목을 한 장의 PNG로 저장합니다.">▧ 보유 사진 저장</button><button class="btn small" id="collectionCopy" type="button">보유 목록 복사</button></div></div>
+      
        <div id="collectionGrid" class="collection-grid" aria-live="polite"></div>
       <p class="collection-footnote">인격 195종·E.G.O 117종 기준. 기본 지급 항목은 보유로 고정됩니다. 모든 카드에 게임 내 일러스트 출처를 연결했으며, 외부 이미지 제공처에서 연결에 실패하면 이미지 미등록 안내가 표시됩니다. 카드는 Project Moon 게임 내 일러스트를 사용하며, 자료 출처는 <a href="https://github.com/raphon-create/limbus-tracker" target="_blank" rel="noopener noreferrer">인격 사진 자료</a> · <a href="https://github.com/eldritchtools/limbus-shared-library" target="_blank" rel="noopener noreferrer">E.G.O 사진 자료</a> · <a href="https://limbuscompany.wiki.gg/wiki/Category:E.G.O_Images" target="_blank" rel="noopener noreferrer">최신 E.G.O 이미지</a> · <a href="https://limbusdeck.com/ko/database/identities" target="_blank" rel="noopener noreferrer">최신 인격 이미지</a>입니다.</p>
     </div>
@@ -152,8 +168,8 @@
 <div class="overlay" id="runOverlay"><div class="dialog" style="max-width:560px" role="dialog" aria-modal="true"><div class="dialog-head"><h2>거울던전 회차 편집</h2><button class="btn small quiet" id="runEditClose">✕ 닫기</button></div><div class="dialog-body"><div class="form-grid"><div class="field wide"><label for="runName">회차 이름</label><input id="runName" placeholder="예: 3회차 · 호흡 테스트"></div><div class="field wide"><label for="runStartAt">시작 시각</label><input id="runStartAt" type="datetime-local" step="1"></div><div class="field"><label for="runFloor3">3층 클리어</label><input id="runFloor3" type="datetime-local" step="1"></div><div class="field"><label for="runFloor4">4층 시작</label><input id="runFloor4" type="datetime-local" step="1"></div><div class="field wide"><label for="runFloor5">5층 클리어</label><input id="runFloor5" type="datetime-local" step="1"></div><div class="field wide"><label for="runMemo">메모</label><textarea id="runMemo" rows="3" placeholder="사용한 덱, 기프트, 실패 원인 등을 적어두세요"></textarea><small>비워 둔 단계는 '기록 없음'으로 표시됩니다.</small></div></div></div><div class="dialog-foot"><button class="btn quiet" id="runEditCancel">취소</button><button class="btn primary" id="runEditSave">저장</button></div></div></div>
 <div class="image-lightbox" id="lightbox"><img id="lightboxImg" alt="확대 이미지"></div>
 <input type="file" id="photoInput" accept="image/*" multiple hidden><input type="file" id="restoreInput" accept="application/json,.json" hidden>
-<script src="collection-data.js?v=20261113-sinner-counts1"></script>
-<script src="collection.js?v=20261113-sinner-counts1"></script>
+<script src="collection-data.js?v=20261113-export-options1"></script>
+<script src="collection.js?v=20261113-export-options1"></script>
 <script>
 'use strict';
 const CATEGORIES=['거울던전','E.G.O 기프트','덱·인격','테마팩','스토리','기타'];
