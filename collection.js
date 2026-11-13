@@ -445,7 +445,11 @@ async function collectionDownloadOwnedPicture(){
    {kind:'identity',items:identities},
    {kind:'ego',items:egos}
   ].filter(section=>section.items.length);
-  const head=vertical?Math.max(78,Math.round(112*factor)):8,footer=8,sectionGap=8,groupBreak=5,mixedGap=3;
+  // 헤더에서 심볼과 이름이 겹치지 않도록 둘의 실제 크기로 높이를 계산합니다.
+  const verticalLogoSize=Math.min(cardW-12,Math.max(34,Math.round(64*factor)));
+  const verticalTitleSize=Math.min(27,Math.max(11,Math.round(25*factor)));
+  const head=vertical?Math.max(78,Math.ceil(9+verticalLogoSize+8+verticalTitleSize+12)):8;
+  const footer=8,sectionGap=8,groupBreak=5,mixedGap=3;
   const layoutCache=new WeakMap();
   const getLayout=(items,columnCount)=>{
    let cache=layoutCache.get(items);
@@ -502,7 +506,7 @@ async function collectionDownloadOwnedPicture(){
     ctx.strokeStyle='#ad9569';ctx.lineWidth=1;
     collectionPictureRounded(ctx,x+0.5,6.5,cardW-1,head-14,7);ctx.stroke();
     const logo=sinnerLogoImages.get(group.sinner);
-    const logoSize=Math.min(cardW-12,Math.max(34,Math.round(64*factor)));
+    const logoSize=verticalLogoSize;
     const logoY=9;
     if(logo){
      const iw=logo.naturalWidth||logo.width,ih=logo.naturalHeight||logo.height;
@@ -512,7 +516,7 @@ async function collectionDownloadOwnedPicture(){
     }
     ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.fillStyle='#fff0c8';ctx.shadowColor='#050807';ctx.shadowBlur=3;
-    let fontSize=Math.min(27,Math.max(11,Math.round(25*factor)));
+    let fontSize=verticalTitleSize;
     while(fontSize>9){
      ctx.font='900 '+fontSize+'px "Malgun Gothic",sans-serif';
      if(ctx.measureText(name).width<=cardW-10)break;
