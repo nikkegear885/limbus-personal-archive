@@ -118,6 +118,18 @@
 @media(max-width:570px){.collection-export-panel{padding:11px 9px}.collection-export-line{gap:6px}.collection-export-separator{width:100%;height:1px;margin:4px 0}.collection-export-check{font-size:11px;padding:7px 8px}}
 .collection-footnote{font-size:11px;color:#8c9e9f;line-height:1.75;margin-top:20px}
 @media(max-width:570px){.collection-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.collection-topstats{grid-template-columns:repeat(2,minmax(0,1fr))}.collection-filter{padding:7px 9px;font-size:11px}.collection-name-overlay{min-height:60px;font-size:10.5px;padding:28px 5px 7px}.collection-card-grade{font-size:11px;top:5px;left:5px}.collection-owned-mark{width:24px;height:24px;top:5px;right:5px;font-size:14px}.collection-card.ego-card{padding:7px 4px 10px}.collection-ego-circle{width:min(100%,115px)}.collection-ego-name{font-size:11px}}
+
+.collection-preview-modal[hidden]{display:none}
+.collection-preview-modal{position:fixed;inset:0;z-index:1100;background:#050a0de8;display:flex;align-items:center;justify-content:center;padding:clamp(8px,2vw,24px)}
+.collection-preview-dialog{display:flex;flex-direction:column;width:min(100%,1160px);max-height:95dvh;border:1px solid #60716b;border-radius:14px;box-shadow:0 20px 75px #000b;background:#182227;overflow:hidden}
+.collection-preview-header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px;background:#1c282b;border-bottom:1px solid #37464a}
+.collection-preview-header strong{font-size:17px;color:#f3d8a7}
+.collection-preview-meta{color:#a9b9b8;font-size:12px;line-height:1.5;margin:5px 0 0}
+.collection-preview-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:15px;text-align:center;background:#0d1519}
+.collection-preview-body img{display:block;width:auto;max-width:100%;height:auto;max-height:none;margin:0 auto;background:#11191c;border:1px solid #334044}
+.collection-preview-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:12px 18px;background:#1c282b;border-top:1px solid #37464a;color:#9db0ac;font-size:11px}
+@media(max-width:570px){.collection-preview-dialog{max-height:96dvh}.collection-preview-header,.collection-preview-footer{padding:10px}.collection-preview-body{padding:8px}.collection-preview-meta{font-size:11px}}
+
 </style>
 </head>
 <body>
@@ -163,7 +175,7 @@
         <div class="collection-export-line collection-export-scale-line"><label class="collection-export-label" for="collectionExportCardSize">저장 사진 크기</label><input id="collectionExportCardSize" type="range" min="40" max="120" step="5" value="70" aria-label="PNG 저장 카드 크기 조절"><output id="collectionExportCardSizeValue" for="collectionExportCardSize">70%</output><span class="collection-export-layout-hint">작게 조절하면 한 줄에 더 많이 배치됩니다 · 기존 크기 100%</span></div>
         <div class="collection-export-note"><span id="collectionExportSummary" aria-live="polite">저장 대상 계산 중…</span><span>보유 O만 저장 · 수감자 선택 반영 · 화면의 검색·등급 필터와 별도</span></div>
       </div>
-      <div class="toolbar"><div><div class="section-title" id="collectionStatus">보유 현황</div><div class="subtext" id="collectionVisible"></div></div><div class="top-actions"><button class="btn small primary" id="collectionDownloadPicture" type="button" title="아래 사진 저장 설정에서 선택한 인격·E.G.O 보유 항목을 한 장의 PNG로 저장합니다.">▧ 보유 사진 저장</button><button class="btn small" id="collectionCopy" type="button">보유 목록 복사</button></div></div>
+      <div class="toolbar"><div><div class="section-title" id="collectionStatus">보유 현황</div><div class="subtext" id="collectionVisible"></div></div><div class="top-actions"><button class="btn small primary" id="collectionDownloadPicture" type="button" title="선택한 보유 항목을 PNG로 만들고 미리 본 뒤 저장합니다.">▧ 보유 사진 미리보기</button><button class="btn small" id="collectionCopy" type="button">보유 목록 복사</button></div></div>
       
        <div id="collectionGrid" class="collection-grid" aria-live="polite"></div>
       <p class="collection-footnote">인격 195종·E.G.O 117종 기준. 기본 지급 항목은 보유로 고정됩니다. 모든 카드에 게임 내 일러스트 출처를 연결했으며, 외부 이미지 제공처에서 연결에 실패하면 이미지 미등록 안내가 표시됩니다. 카드는 Project Moon 게임 내 일러스트를 사용하며, 자료 출처는 <a href="https://github.com/raphon-create/limbus-tracker" target="_blank" rel="noopener noreferrer">인격 사진 자료</a> · <a href="https://github.com/eldritchtools/limbus-shared-library" target="_blank" rel="noopener noreferrer">E.G.O 사진 자료</a> · <a href="https://limbuscompany.wiki.gg/wiki/Category:E.G.O_Images" target="_blank" rel="noopener noreferrer">최신 E.G.O 이미지</a> · <a href="https://limbusdeck.com/ko/database/identities" target="_blank" rel="noopener noreferrer">최신 인격 이미지</a>입니다.</p>
@@ -176,9 +188,19 @@
 <div class="overlay" id="editorOverlay"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="editorTitle"><div class="dialog-head"><h2 id="editorTitle">새 공략 작성</h2><button class="btn small quiet" id="editClose">✕ 닫기</button></div><div class="dialog-body"><div class="form-grid"><div class="field wide"><label for="editTitle">공략 제목 *</label><input id="editTitle" placeholder="예: 호흡 기프트 5층런 체크리스트" maxlength="130"></div><div class="field"><label for="editCategory">분류</label><select id="editCategory"></select></div><div class="field"><label for="editTags">태그</label><input id="editTags" placeholder="호흡, 5층런, 뉴비 (쉼표로 구분)"></div><div class="field wide"><label for="editSource">참고 공략 링크 (선택)</label><input id="editSource" type="url" placeholder="https://arca.live/... 또는 https://gall.dcinside.com/..."></div></div><div class="block-area"><div class="block-head"><div><div class="section-title">본문 · 사진</div><div class="subtext">글과 이미지를 원하는 순서대로 배치할 수 있어요.</div></div></div><div id="blocksEditor"></div><div class="block-actions"><button class="btn" id="addText">＋ 글 추가</button><button class="btn" id="addPhoto">▧ 사진 추가</button></div><div class="file-zone" id="dropzone">사진을 이곳으로 <strong>드래그</strong>하거나, 복사한 이미지를 <strong>Ctrl+V</strong>로 붙여넣어도 돼요.<br><small>사진은 저장 공간을 아끼도록 자동 크기 조절됩니다.</small></div></div></div><div class="dialog-foot"><button class="btn quiet" id="editCancel">취소</button><button class="btn primary" id="editSave">✓ 공략 저장</button></div></div></div>
 <div class="overlay" id="runOverlay"><div class="dialog" style="max-width:560px" role="dialog" aria-modal="true"><div class="dialog-head"><h2>거울던전 회차 편집</h2><button class="btn small quiet" id="runEditClose">✕ 닫기</button></div><div class="dialog-body"><div class="form-grid"><div class="field wide"><label for="runName">회차 이름</label><input id="runName" placeholder="예: 3회차 · 호흡 테스트"></div><div class="field wide"><label for="runStartAt">시작 시각</label><input id="runStartAt" type="datetime-local" step="1"></div><div class="field"><label for="runFloor3">3층 클리어</label><input id="runFloor3" type="datetime-local" step="1"></div><div class="field"><label for="runFloor4">4층 시작</label><input id="runFloor4" type="datetime-local" step="1"></div><div class="field wide"><label for="runFloor5">5층 클리어</label><input id="runFloor5" type="datetime-local" step="1"></div><div class="field wide"><label for="runMemo">메모</label><textarea id="runMemo" rows="3" placeholder="사용한 덱, 기프트, 실패 원인 등을 적어두세요"></textarea><small>비워 둔 단계는 '기록 없음'으로 표시됩니다.</small></div></div></div><div class="dialog-foot"><button class="btn quiet" id="runEditCancel">취소</button><button class="btn primary" id="runEditSave">저장</button></div></div></div>
 <div class="image-lightbox" id="lightbox"><img id="lightboxImg" alt="확대 이미지"></div>
+<div id="collectionPreviewModal" class="collection-preview-modal" hidden role="dialog" aria-modal="true" aria-labelledby="collectionPreviewTitle">
+  <div class="collection-preview-dialog">
+    <div class="collection-preview-header">
+      <div><strong id="collectionPreviewTitle">보유 사진 미리보기</strong><p id="collectionPreviewMeta" class="collection-preview-meta"></p></div>
+      <button class="btn small quiet" id="collectionPreviewClose" type="button" aria-label="미리보기 닫기">✕ 닫기</button>
+    </div>
+    <div class="collection-preview-body"><img id="collectionPreviewImage" alt="저장할 PNG 이미지 미리보기"></div>
+    <div class="collection-preview-footer"><span>이미지를 확인한 후 저장하세요.</span><div class="top-actions"><button class="btn small quiet" id="collectionPreviewCancel" type="button">취소</button><button class="btn small primary" id="collectionPreviewSave" type="button">PNG 저장</button></div></div>
+  </div>
+</div>
 <input type="file" id="photoInput" accept="image/*" multiple hidden><input type="file" id="restoreInput" accept="application/json,.json" hidden>
-<script src="collection-data.js?v=20261113-export-prefs1"></script>
-<script src="collection.js?v=20261113-export-prefs1"></script>
+<script src="collection-data.js?v=20261113-preview1"></script>
+<script src="collection.js?v=20261113-preview1"></script>
 <script>
 'use strict';
 const CATEGORIES=['거울던전','E.G.O 기프트','덱·인격','테마팩','스토리','기타'];
