@@ -106,6 +106,8 @@
 .collection-export-check:has(input:disabled){opacity:.4;cursor:not-allowed}
 .collection-export-check input{width:15px;height:15px;min-width:15px;margin:0;padding:0;accent-color:#c8a463;cursor:inherit;box-shadow:none}
 .collection-export-separator{width:1px;height:22px;background:#53615b;margin:0 2px}
+.collection-export-layout-line{padding-top:9px;margin-top:9px;border-top:1px solid #35433f}
+.collection-export-layout-hint{font-size:11px;color:#a4b4b0;line-height:1.5}
 .collection-export-note{display:flex;justify-content:space-between;flex-wrap:wrap;gap:5px 16px;margin-top:9px;font-size:11px;color:#a0b3af;line-height:1.6}
 #collectionExportSummary{color:#f2d39a;font-weight:780}
 @media(max-width:570px){.collection-export-panel{padding:11px 9px}.collection-export-line{gap:6px}.collection-export-separator{width:100%;height:1px;margin:4px 0}.collection-export-check{font-size:11px;padding:7px 8px}}
@@ -152,6 +154,7 @@
       <div class="collection-toolbar"><input id="collectionSearch" placeholder="인격 · E.G.O 이름 검색" aria-label="보유 도감 이름 검색"><select id="collectionRarity" aria-label="등급 선택"><option value="">전체 등급</option><option value="3">3성</option><option value="2">2성</option><option value="1">1성</option></select><select id="collectionSort" aria-label="정렬"><option value="sinner">수감자별 · 최신순</option><option value="name">이름순</option></select><button type="button" class="btn small" id="collectionClearFilters">필터 초기화</button></div>
       <div class="collection-export-panel" id="collectionExportPanel" aria-label="보유 사진 저장 설정">
         <div class="collection-export-line"><strong class="collection-export-label">사진 저장 항목</strong><label class="collection-export-check"><input type="checkbox" id="collectionExportIdentity" checked> 인격</label><label class="collection-export-check"><input type="checkbox" id="collectionExportEgo" checked> E.G.O</label><span class="collection-export-separator" aria-hidden="true"></span><span class="collection-export-label">인격 등급</span><label class="collection-export-check"><input type="checkbox" id="collectionExportRank1" checked> ★</label><label class="collection-export-check"><input type="checkbox" id="collectionExportRank2" checked> ★★</label><label class="collection-export-check"><input type="checkbox" id="collectionExportRank3" checked> ★★★</label></div>
+        <div class="collection-export-line collection-export-layout-line"><span class="collection-export-label">사진 배치</span><label class="collection-export-check"><input type="checkbox" id="collectionExportGroupBySinner" checked> 수감자별 구분</label><span class="collection-export-layout-hint">수감자별로 카드를 모으고 그룹 사이에 선과 여백 표시 · 이름 표기 없음</span></div>
         <div class="collection-export-note"><span id="collectionExportSummary" aria-live="polite">저장 대상 계산 중…</span><span>보유 O만 저장 · 수감자 선택 반영 · 화면의 검색·등급 필터와 별도</span></div>
       </div>
       <div class="toolbar"><div><div class="section-title" id="collectionStatus">보유 현황</div><div class="subtext" id="collectionVisible"></div></div><div class="top-actions"><button class="btn small primary" id="collectionDownloadPicture" type="button" title="아래 사진 저장 설정에서 선택한 인격·E.G.O 보유 항목을 한 장의 PNG로 저장합니다.">▧ 보유 사진 저장</button><button class="btn small" id="collectionCopy" type="button">보유 목록 복사</button></div></div>
@@ -168,8 +171,8 @@
 <div class="overlay" id="runOverlay"><div class="dialog" style="max-width:560px" role="dialog" aria-modal="true"><div class="dialog-head"><h2>거울던전 회차 편집</h2><button class="btn small quiet" id="runEditClose">✕ 닫기</button></div><div class="dialog-body"><div class="form-grid"><div class="field wide"><label for="runName">회차 이름</label><input id="runName" placeholder="예: 3회차 · 호흡 테스트"></div><div class="field wide"><label for="runStartAt">시작 시각</label><input id="runStartAt" type="datetime-local" step="1"></div><div class="field"><label for="runFloor3">3층 클리어</label><input id="runFloor3" type="datetime-local" step="1"></div><div class="field"><label for="runFloor4">4층 시작</label><input id="runFloor4" type="datetime-local" step="1"></div><div class="field wide"><label for="runFloor5">5층 클리어</label><input id="runFloor5" type="datetime-local" step="1"></div><div class="field wide"><label for="runMemo">메모</label><textarea id="runMemo" rows="3" placeholder="사용한 덱, 기프트, 실패 원인 등을 적어두세요"></textarea><small>비워 둔 단계는 '기록 없음'으로 표시됩니다.</small></div></div></div><div class="dialog-foot"><button class="btn quiet" id="runEditCancel">취소</button><button class="btn primary" id="runEditSave">저장</button></div></div></div>
 <div class="image-lightbox" id="lightbox"><img id="lightboxImg" alt="확대 이미지"></div>
 <input type="file" id="photoInput" accept="image/*" multiple hidden><input type="file" id="restoreInput" accept="application/json,.json" hidden>
-<script src="collection-data.js?v=20261113-export-options1"></script>
-<script src="collection.js?v=20261113-export-options1"></script>
+<script src="collection-data.js?v=20261113-grouped-export1"></script>
+<script src="collection.js?v=20261113-grouped-export1"></script>
 <script>
 'use strict';
 const CATEGORIES=['거울던전','E.G.O 기프트','덱·인격','테마팩','스토리','기타'];
