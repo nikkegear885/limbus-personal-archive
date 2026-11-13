@@ -11,6 +11,18 @@ function collectionStats(){
  const sinner=collectionSinners().find(s=>s.id===collectionSinnerFilter);
  $('collectionStatus').textContent=(sinner?sinner.name+' · ':'전체 · ')+(collectionKind==='identity'?'인격':'E.G.O')+' 보유 '+rows.filter(x=>x.kind===collectionKind&&(collectionSinnerFilter==='all'||x.sinner===collectionSinnerFilter)&&collectionOwned(x)).length+'개';
 }
+// 외부 raw GitHub 접근 실패 시 동일 저장소의 동일 이미지 파일을 CDN에서 재시도.
+function collectionImageMirror(src){
+ try{
+  const url=new URL(src);
+  if(url.hostname!=='raw.githubusercontent.com')return '';
+  const parts=url.pathname.split('/').filter(Boolean);
+  if(parts.length<4)return '';
+  const [owner,repo,branch,...path]=parts;
+  if(!/^[\\w.-]+$/.test(owner)||!/^[\\w.-]+$/.test(repo)||!/^[\\w.-]+$/.test(branch))return '';
+  return 'https://cdn.jsdelivr.net/gh/'+owner+'/'+repo+'@'+branch+'/'+path.join('/');
+ }catch{return ''}
+}
 function renderCollection(){
  const grid=$('collectionGrid');if(!grid)return;
  const list=collectionRows();collectionStats();
@@ -22,7 +34,7 @@ function renderCollection(){
  grid.innerHTML=matches.length?matches.map(row=>{
   const owned=collectionOwned(row),sinner=sl.find(s=>s.id===row.sinner)?.name||'';
   const fallback='<span class="collection-no-image"'+(row.image?' style="display:none"':'')+'>이미지 미등록</span>';
-  const pic=row.image?'<img src="'+esc(row.image)+'" loading="lazy" decoding="async" alt="'+esc(sinner+' '+row.name)+'" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\'">'+fallback:fallback;
+  const pic=row.image?'<img src="'+esc(row.image)+'" data-collection-backup="'+esc(collectionImageMirror(row.image))+'" loading="lazy" decoding="async" alt="'+esc(sinner+' '+row.name)+'">'+fallback:fallback;
   const attributes=' data-collection-id="'+esc(row.id)+'"'+(row.base?' disabled title="기본 지급 항목"':'')+' aria-pressed="'+owned+'" aria-label="'+esc(sinner+' '+row.name+' · '+(owned?'보유':'미보유'))+'"';
   if(row.kind==='identity'){
    return '<button type="button" class="collection-card identity-card rarity-'+row.rarity+(owned?' owned':'')+'"'+attributes+'><span class="collection-image">'+pic+'<span class="collection-card-grade">'+esc('★'.repeat(row.rarity))+'</span><span class="collection-owned-mark">'+(owned?'O':'')+'</span><span class="collection-name-overlay">'+esc(row.name)+'</span></span></button>';
@@ -43,6 +55,23 @@ function wireCollection(){
  $('collectionSearch').addEventListener('input',renderCollection);
  $('collectionRarity').addEventListener('change',renderCollection);
  $('collectionSort').addEventListener('change',e=>{collectionOrder=e.target.value;renderCollection()});
+ // 캡처 단계에서 이미지 실패를 처리하여 검증된 동일 파일 미러로 우선 재시도합니다.
+ $('collectionGrid').addEventListener('error',e=>{
+  const img=e.target;
+  if(!(img instanceof HTMLImageElement))return;
+  const backup=img.dataset.collectionBackup;
+  if(backup&&!img.dataset.collectionRetried){
+   img.dataset.collectionRetried='1';
+   img.src=backup;
+   return;
+  }
+  img.style.display='none';
+  const placeholder=img.nextElementSibling;
+  if(placeholder?.classList.contains('collection-no-image')){
+   placeholder.style.display='grid';
+   placeholder.textContent='이미지 연결 실패';
+  }
+ },true);
  $('collectionGrid').addEventListener('click',async e=>{
   const b=e.target.closest('button[data-collection-id]');if(!b||b.disabled)return;
   const id=b.dataset.collectionId,row=collectionRows().find(r=>r.id===id);if(!row)return;
