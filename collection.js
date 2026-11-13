@@ -451,7 +451,9 @@ async function collectionDownloadOwnedPicture(){
   // 헤더에서 심볼과 이름이 겹치지 않도록 둘의 실제 크기로 높이를 계산합니다.
   const verticalLogoSize=Math.min(cardW-12,Math.max(34,Math.round(64*factor)));
   const verticalTitleSize=Math.min(27,Math.max(11,Math.round(25*factor)));
-  const head=vertical?Math.max(78,Math.ceil(9+verticalLogoSize+8+verticalTitleSize+12)):8;
+  // PNG 세로 열 상단은 무배경·무테두리로 표시하며 로고와 글자 간격을 10px에서 5px로 줄입니다.
+  const sinnerHeaderGap=5;
+  const head=vertical?Math.ceil(9+verticalLogoSize+sinnerHeaderGap+verticalTitleSize+8):8;
   const footer=8,sectionGap=8,groupBreak=5,mixedGap=3;
   const layoutCache=new WeakMap();
   const getLayout=(items,columnCount)=>{
@@ -505,10 +507,7 @@ async function collectionDownloadOwnedPicture(){
     const x=pad+i*(cardW+sinnerColumnGap);
     const name=sinnerNames.get(group.sinner)||group.sinner;
     ctx.save();
-    ctx.fillStyle='#202b2f';
-    collectionPictureRounded(ctx,x,6,cardW,head-13,7);ctx.fill();
-    ctx.strokeStyle='#ad9569';ctx.lineWidth=1;
-    collectionPictureRounded(ctx,x+0.5,6.5,cardW-1,head-14,7);ctx.stroke();
+    // 로고와 수감자 이름만 투명한 헤더 공간에 그립니다. 상자/테두리/배경은 없습니다.
     const logo=sinnerLogoImages.get(group.sinner);
     const logoSize=verticalLogoSize;
     const logoY=9;
@@ -518,7 +517,7 @@ async function collectionDownloadOwnedPicture(){
      const dw=iw*sizeScale,dh=ih*sizeScale;
      ctx.drawImage(logo,x+(cardW-dw)/2,logoY+(logoSize-dh)/2,dw,dh);
     }
-    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.textAlign='center';ctx.textBaseline='top';
     ctx.fillStyle='#fff0c8';ctx.shadowColor='#050807';ctx.shadowBlur=3;
     let fontSize=verticalTitleSize;
     while(fontSize>9){
@@ -527,10 +526,8 @@ async function collectionDownloadOwnedPicture(){
      fontSize-=0.5;
     }
     ctx.font='900 '+fontSize+'px "Malgun Gothic",sans-serif';
-    ctx.fillText(name,x+cardW/2,head-19,cardW-10);
+    ctx.fillText(name,x+cardW/2,logoY+logoSize+sinnerHeaderGap,cardW-10);
     ctx.shadowBlur=0;
-    ctx.strokeStyle='#e1b975';ctx.lineWidth=2;
-    ctx.beginPath();ctx.moveTo(x+4,head-4);ctx.lineTo(x+cardW-4,head-4);ctx.stroke();
     ctx.restore();
     if(i>0){
      const dividerX=x-sinnerColumnGap/2;
