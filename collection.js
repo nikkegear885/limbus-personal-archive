@@ -127,7 +127,13 @@ function collectionPictureOwnedMark(ctx,x,y){
  ctx.fillStyle='#ffffff';ctx.font='900 18px "Malgun Gothic",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('O',x,y+1);
  ctx.textBaseline='alphabetic';
 }
-function collectionPictureCard(ctx,row,image,x,y,w,h,sinnerName){
+function collectionPictureCard(ctx,row,image,x,y,w,h,sinnerName,cardScale=1){
+ // 카드 크기가 변해도 이름, 별, O 배지, E.G.O 원형 비율을 함께 유지합니다.
+ if(cardScale!==1){
+  ctx.save();ctx.translate(x,y);ctx.scale(cardScale,cardScale);
+  collectionPictureCard(ctx,row,image,0,0,w/cardScale,h/cardScale,sinnerName,1);
+  ctx.restore();return;
+ }
  const identity=row.kind==='identity',imageHeight=identity?h:152;
  const border=identity?(row.rarity===3?'#d4a750':row.rarity===2?'#b14537':'#8b785a'):'#786447';
  ctx.save();
@@ -194,6 +200,18 @@ function collectionExportSinnerGroups(identities,egos,sinners){
   egos:egos.filter(row=>row.sinner===s.id)
  })).filter(group=>group.identities.length||group.egos.length);
 }
+function collectionExportSizeSettings(){
+ const slider=$('collectionExportCardSize');
+ const raw=Number(slider?.value);
+ const percent=Number.isFinite(raw)?Math.max(40,Math.min(120,raw)):70;
+ const factor=percent/100;
+ const width=1120,pad=32;
+ const baseWidth=(width-pad*2-5*12)/6;
+ const cardW=baseWidth*factor;
+ const gap=Math.max(6,Math.round(12*factor));
+ const cols=Math.max(1,Math.floor((width-pad*2+gap+0.001)/(cardW+gap)));
+ return {percent,factor,width,pad,cardW,gap,cols};
+}
 function collectionExportUpdateSummary(){
  const identity=$('collectionExportIdentity');
  if(!identity)return;
@@ -201,6 +219,9 @@ function collectionExportUpdateSummary(){
   const box=$('collectionExportRank'+n);
   if(box)box.disabled=!identity.checked;
  }
+ const size=collectionExportSizeSettings();
+ const sizeValue=$('collectionExportCardSizeValue');
+ if(sizeValue)sizeValue.textContent=size.percent+'%';
  const selection=collectionExportSelection();
  const total=selection.identities.length+selection.egos.length;
  const out=$('collectionExportSummary');
@@ -228,10 +249,10 @@ async function collectionDownloadOwnedPicture(){
   const canvas=document.createElement('canvas');
   const ctx=canvas.getContext('2d');
   if(!ctx)throw new Error('브라우저에서 이미지 캔버스를 지원하지 않습니다');
-  const width=1120,pad=32,cols=6,gap=12,cardW=(width-pad*2-gap*(cols-1))/cols;
+  const {width,pad,cols,gap,cardW,factor}=collectionExportSizeSettings();
   const grouped=$('collectionExportGroupBySinner')?.checked!==false;
   const groups=grouped?collectionExportSinnerGroups(identities,egos,sinners):[];
-  const identityHeight=Math.round(cardW*370/240),egoHeight=230;
+  const identityHeight=Math.round(cardW*370/240),egoHeight=Math.round(230*factor);
   const sections=[
    {kind:'identity',items:identities,title:'인격',height:identityHeight},
    {kind:'ego',items:egos,title:'E.G.O',height:egoHeight}
@@ -271,14 +292,14 @@ async function collectionDownloadOwnedPicture(){
     for(let i=0;i<group.identities.length;i++){
      const row=group.identities[i],x=pad+(i%cols)*(cardW+gap);
      const cy=y+Math.floor(i/cols)*(identityHeight+gap);
-     collectionPictureCard(ctx,row,loadedMap.get(row.id),x,cy,cardW,identityHeight,'');
+     collectionPictureCard(ctx,row,loadedMap.get(row.id),x,cy,cardW,identityHeight,'',factor);
     }
     y+=Math.ceil(group.identities.length/cols)*(identityHeight+gap);
     if(group.identities.length&&group.egos.length)y+=mixedGap;
     for(let i=0;i<group.egos.length;i++){
      const row=group.egos[i],x=pad+(i%cols)*(cardW+gap);
      const cy=y+Math.floor(i/cols)*(egoHeight+gap);
-     collectionPictureCard(ctx,row,loadedMap.get(row.id),x,cy,cardW,egoHeight,'');
+     collectionPictureCard(ctx,row,loadedMap.get(row.id),x,cy,cardW,egoHeight,'',factor);
     }
     y+=Math.ceil(group.egos.length/cols)*(egoHeight+gap);
    }
@@ -296,7 +317,7 @@ async function collectionDownloadOwnedPicture(){
     y+=sectionHeader;
     for(let i=0;i<section.items.length;i++){
      const row=section.items[i],x=pad+(i%cols)*(cardW+gap),cy=y+Math.floor(i/cols)*(section.height+gap);
-     collectionPictureCard(ctx,row,loadedMap.get(row.id),x,cy,cardW,section.height,sinners.find(s=>s.id===row.sinner)?.name||'');
+     collectionPictureCard(ctx,row,loadedMap.get(row.id),x,cy,cardW,section.height,sinners.find(s=>s.id===row.sinner)?.name||'',factor);
     }
     y+=Math.ceil(section.items.length/cols)*(section.height+gap)+sectionBottom;
    }
@@ -360,6 +381,7 @@ function wireCollection(){
   try{await collectionSave()}catch(err){console.error(err);toast('보유 상태 저장 실패: 다시 확인해 주세요')}
  });
  $('collectionClearFilters').addEventListener('click',()=>{collectionSinnerFilter='all';collectionOwnerFilter='all';collectionOrder='sinner';$('collectionSearch').value='';$('collectionRarity').value='';$('collectionSort').value='sinner';renderCollection()});
+ $('collectionExportCardSize').addEventListener('input',collectionExportUpdateSummary);
  for(const id of ['collectionExportIdentity','collectionExportEgo','collectionExportRank1','collectionExportRank2','collectionExportRank3','collectionExportGroupBySinner']){
   $(id).addEventListener('change',collectionExportUpdateSummary);
  }
