@@ -436,7 +436,7 @@ async function collectionDownloadOwnedPicture(){
    {kind:'identity',items:identities},
    {kind:'ego',items:egos}
   ].filter(section=>section.items.length);
-  const head=8,footer=8,sectionGap=8,groupBreak=5,mixedGap=3;
+  const head=vertical?48:8,footer=8,sectionGap=8,groupBreak=5,mixedGap=3;
   const layoutCache=new WeakMap();
   const getLayout=(items,columnCount)=>{
    let cache=layoutCache.get(items);
@@ -475,10 +475,25 @@ async function collectionDownloadOwnedPicture(){
    return current.height;
   };
   if(vertical){
-   // 열마다 높이는 독립적으로 증가시키고, 서로 다른 수감자는 바로 옆 열에 그립니다.
+   // 각 수감자 열 위에 이름을 넣고, 이름 아래부터 인격과 E.G.O를 쌓습니다.
+   const sinnerNames=new Map(sinners.map(s=>[s.id,s.name]));
    for(let i=0;i<verticalGroups.length;i++){
     const group=verticalGroups[i];
     const x=pad+i*(cardW+sinnerColumnGap);
+    const name=sinnerNames.get(group.sinner)||group.sinner;
+    ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle='#f0d5a3';
+    let fontSize=21;
+    while(fontSize>8){
+     ctx.font='900 '+fontSize+'px "Malgun Gothic",sans-serif';
+     if(ctx.measureText(name).width<=cardW-6)break;
+     fontSize-=0.5;
+    }
+    ctx.font='900 '+fontSize+'px "Malgun Gothic",sans-serif';
+    ctx.fillText(name,x+cardW/2,head/2-2);
+    ctx.strokeStyle='#62716c';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x+3,head-7);ctx.lineTo(x+cardW-3,head-7);ctx.stroke();
+    ctx.restore();
     if(i>0){
      const dividerX=x-sinnerColumnGap/2;
      ctx.strokeStyle='#62716c';ctx.lineWidth=1;
