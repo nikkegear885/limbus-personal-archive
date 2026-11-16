@@ -83,20 +83,66 @@ const CATALOG=[
 ['교본','','5','','B','공통','5층 한정 후보. 경로와 보상 확인.','atlas'],
 ['꿈이 끝나는','','5','','B','공통','5층 한정 후보. 경로와 보상 확인.','atlas']
 ];
-const DATA=CATALOG.flatMap(([name,nFloors,hFloors,nRanks,hRanks,tags,note,source])=>{
- const result=[];
- for(const [difficulty,floors,ranks] of [['normal',nFloors,nRanks],['hard',hFloors,hRanks]]){
-  if(!floors)continue;
-  const ids=floors.split(','), tiers=ranks.split(',');
-  if(ids.length!==tiers.length)throw Error('팩 층·티어 데이터 개수 불일치: '+name+' '+difficulty);
-  ids.forEach((value,i)=>{const floor=Number(value);if(!Number.isInteger(floor)||floor<1||floor>5||!['S','A','B','C'].includes(tiers[i]))throw Error('팩 티어 데이터 오류: '+name);result.push({floor,name,tier:tiers[i],tags:tags.split(','),note,source,id:floor+'|'+name,difficulty})});
+// 최신 팩 도감에 존재하는 1~5층 출현 팩 100종을 단일 원천 데이터로 관리.
+const PACK_FLOORS="공장 자동화|1,2|1,2\n꿰뚫을 것|2,3|1,2\n둥지, 공방, 기술|1,2|1\n레이크 월드|2|1\n못과 망치|1|1\n바스라질 것|2,3|1,2\n베어낼 것|2,3|1,2\n사랑할 수 없는|1,2|1,2\n속하지 못하는|1|1\n신앙과 침식|1,2|1\n잊혀진 자들|1|1\n저택의 부산물|3|1\n카지노 푸어|1,2|1\n감정 앞에 게으른 것|3|2\n감정에 굶주린 것|3|2\n감정에 복종한 것|3|2\n감정에 짓눌리는 것|3|2\n감정에 침수된 것|3|2\n감정에 홀리는 것|3|2\n감정으로 평가된 것|3|2\n낙화|3|2,3\n마주하지 않는|3|2,3\n우.미.다|2|2,3\n헬스 치킨|2|2\n20번구의 기적|4|3,4\n기어오는 심연|4,5|3,4\n내쉬어진 한숨||3\n먹어치운 탐식|4,5|3,4\n부서뜨리는 외력||3\n빠져드는 색욕|4,5|3,4\n새어나온 적혈||3\n어느 세계|4,5|3,4\n어지러운 파동||3\n억눌린 분노|4,5|3,4\n오픈런|3,4|3,4\n육참골단|4,5|3,4\n자색 정오의 시련|4|3,4\n잠겨드는 아림||3\n전락하는 우울|4,5|3,4\n증오와 절망|3,4|3,4\n차오르는 동력||3\n초라한 질투|4,5|3,4\n타오르는 일렁임||3\n탄환이 찍은 마침표|4|3,4\n허세짙은 오만|4,5|3,4\n헛도는 나태|4,5|3,4\n현혹, 방황, 불신|4,5|3,4\n흘리는 것들|4,5|3,4\n20번구의 기적 BokGak||4,5\n2호선||4,5\n가르고 베는 이들|5|4\n꿰고 뚫는 이들|5|4\n번잡한 색채||4,5\n벽력섬전||4,5\n변하지 않는||4,5\n보존의 신념||4,5\n부수고 깨뜨릴 이들|5|4\n순환호흡||4,5\n시간살인시간|4,5|4,5\n시간살인시간 BokGak||4,5\n시산혈해||4,5\n심야청소|5|4,5\n심야청소 BokGak||4,5\n악으로 규정되는||4,5\n워프특급 살인사건|4,5|4,5\n워프특급 살인사건 BokGak||4,5\n육참골단 BokGak||4,5\n이상진역||4,5\n침잠쇄도||4,5\n탐식의 재림||4,5\n파죽지세||4,5\n호박색 어스름의 시련|4,5|4,5\n화왕지절||4,5\nLCB 정기검진|5|4,5\nLCB 정기검진 BokGak||4,5\n1호선||5\n3호선||5\n4호선 - 제 3구간||5\n4호선 - 제 4구간||5\n5호선||5\n가라앉은 우울||5\n검과 작품||5\n경험기억|5|5\n교본||5\n꿈이 끝나는||5\n끊어지지 않는||5\n끝나지 않는 행렬||5\n넘쳐흐른 탐식||5\n다시 열린 라만차랜드||5\n독선적인 오만||5\n마음이 어긋나는||5\n멎어버린 나태||5\n바라볼 수밖에 없는||5\n사대 가문과 욕망||5\n새벽 뒤 꿰뚫어 오는 쐐기|5|5\n옭아매는 색욕||5\n절차탁춘|5|5\n처량한 질투||5\n타래 엮기|5|5\n해방된 분노||5";
+const PACKS=PACK_FLOORS.split('\n').map(line=>{
+ const [name,normal,hard]=line.split('|');
+ return {name,normal:normal?normal.split(',').map(Number):[],hard:hard?hard.split(',').map(Number):[]};
+});
+const PACK_INFO=new Map(CATALOG.map(([name,nFloors,hFloors,nRanks,hRanks,tags,note,source])=>[name,{tags:tags.split(','),note,source}]));
+const RECOMMEND={
+ // 5층 고속런 공략(검슈·흑수·새벽흑수), 2026-08 하드 실험 및 도감 검증
+ normal:{
+  1:{S:['카지노 푸어'],A:['잊혀진 자들','공장 자동화']},
+  2:{S:['헬스 치킨'],A:['카지노 푸어','베어낼 것','레이크 월드','우.미.다','공장 자동화']},
+  3:{S:['베어낼 것','증오와 절망'],A:['감정에 복종한 것','꿰뚫을 것','감정에 홀리는 것','마주하지 않는']},
+  4:{S:['증오와 절망'],A:['탄환이 찍은 마침표','먹어치운 탐식','빠져드는 색욕','육참골단']},
+  5:{S:['꿰고 뚫는 이들','먹어치운 탐식'],A:['빠져드는 색욕','육참골단','가르고 베는 이들','LCB 정기검진','워프특급 살인사건']}
+ },
+ hard:{
+  1:{S:['카지노 푸어'],A:['잊혀진 자들','공장 자동화']},
+  2:{S:['헬스 치킨'],A:['베어낼 것','꿰뚫을 것','낙화','감정에 복종한 것']},
+  3:{S:['증오와 절망'],A:['낙화','탄환이 찍은 마침표','오픈런','육참골단','마주하지 않는']},
+  4:{S:['2호선','증오와 절망'],A:['탄환이 찍은 마침표','가르고 베는 이들','꿰고 뚫는 이들','순환호흡','육참골단','워프특급 살인사건 BokGak']},
+  5:{S:['2호선','4호선 - 제 3구간'],A:['1호선','4호선 - 제 4구간','순환호흡','바라볼 수밖에 없는','침잠쇄도']}
+ }
+};
+const SPECIAL_NOTES={
+ '새벽 뒤 꿰뚫어 오는 쐐기':'신규 쐐기·새벽 기프트를 노릴 때 선택. 범용 고속런 최적 팩으로 검증된 것은 아님.',
+ '2호선':'하드 4~5층 전용. 고속 5층런에서 자주 쓰이는 철도 팩.',
+ '1호선':'하드 5층에서 선택 가능. 개인 하드 반복런 마무리 사례 있음.',
+ '4호선 - 제 3구간':'거검슈 고속런의 하드 5층 마무리 사례.',
+ '헬스 치킨':'노말·하드 2층 공통 최우선 경유지. 기프트 파밍과 빠른 진행.',
+ '카지노 푸어':'노말 1~2층, 하드 1층. 고속런 1층 최우선 출발 팩.',
+ '베어낼 것':'노말 2~3층, 하드 1~2층. 검슈·흑수 고속런에서 3층 선택 사례.',
+ '증오와 절망':'노말·하드 모두 3~4층. 고속런 중반 주요 루트.',
+ '꿰고 뚫는 이들':'노말 5층 또는 하드 4층. 노말 5층 마무리 후보.',
+ '낙화':'노말 3층, 하드 2~3층. 생강꽃 가지·만화경 등 필요 기프트 확인.',
+ '공장 자동화':'노말·하드 1~2층. 오더메이드·귀신 들린 신발 등 보상을 노리는 대안.'
+};
+const DATA=PACKS.flatMap(({name,normal,hard})=>{
+ const result=[], info=PACK_INFO.get(name);
+ for(const [difficulty,floors] of [['normal',normal],['hard',hard]]){
+  for(const floor of floors){
+   const recommendation=RECOMMEND[difficulty][floor];
+   const tier=recommendation.S.includes(name)?'S':recommendation.A.includes(name)?'A':'B';
+   const note=SPECIAL_NOTES[name]||info?.note||'등장 층 확인 완료. 핵심 기프트·적 구성·보상이 덱과 맞을 때 선택하는 조건부 팩.';
+   const tags=name==='새벽 뒤 꿰뚫어 오는 쐐기'?['화상','진동','호흡']:info?.tags||['공통'];
+   const source=['카지노 푸어','잊혀진 자들','헬스 치킨','베어낼 것','증오와 절망'].includes(name)?'speed':name==='4호선 - 제 3구간'?'spider':name==='2호선'?'hard':(info?.source||'atlas');
+   result.push({id:floor+'|'+name, name, floor,difficulty,tier,note,tags,source,verified:Boolean(recommendation.S.includes(name)||recommendation.A.includes(name))});
+  }
  }
  return result;
 });
 const MODES={
- normal:{label:'노말',description:'1~5층 모두 노말 · 노말 팩만 표시'},
- hybrid:{label:'노말 → 하드 5층',description:'1~4층 노말 · 5층 하드로 전환'},
- hard:{label:'하드',description:'1~5층 모두 하드 · 하드 팩만 표시'}
+ normal:{label:'노말 5층',description:'1~5층 모두 노말 · 노말 팩만 표시'},
+ hybrid:{label:'노말 4층 + 하드 5층',description:'1~4층 노말 · 마지막 5층만 하드'},
+ hard:{label:'하드 5층',description:'1~5층 모두 하드 · 하드 팩만 표시'}
+};
+const ROUTES={
+ normal:{title:'일반 5층 파밍',stops:['카지노 푸어','헬스 치킨','베어낼 것','증오와 절망','꿰고 뚫는 이들'],note:'노말 5층에는 2호선이 나오지 않습니다. 덱에 맞으면 먹어치운 탐식·육참골단으로 대체 가능합니다.'},
+ hybrid:{title:'노말 4층 + 하드 5층 파밍',stops:['카지노 푸어','헬스 치킨','베어낼 것','증오와 절망','2호선'],note:'검슈·흑수·새벽흑수 고속런에서 확인된 대표 루트. 하드 전환은 5층에서만 진행합니다.'},
+ hard:{title:'전 층 하드 5층 파밍',stops:['카지노 푸어','헬스 치킨','증오와 절망','2호선','4호선 - 제 3구간'],note:'하드 4층은 증오와 절망도 선택 가능. 5층은 1호선·2호선 등 덱에 맞게 대체하세요.'}
 };
 const floorDifficulty=(mode,floor)=>mode==='hard'||(mode==='hybrid'&&floor===5)?'hard':'normal';
 const TIERS=['S','A','B','C'];
@@ -148,6 +194,7 @@ function packCard(item){
  return '<article class="pack-tier-card'+(item.custom?' user-pack':'')+'">'+
   '<div class="pack-tier-card-top"><div class="pack-tier-name">'+escapeHTML(item.name)+'</div><span class="pack-tier-token '+current.toLowerCase()+'">'+current+'</span></div>'+
   '<p>'+escapeHTML(item.note||'내가 추가한 테마팩')+'</p>'+
+ (item.custom?'':('<span class="pack-tier-evidence">'+(item.verified?'공략·선택 사례 반영':'조건부 · 도감에서 등장 층 확인')+'</span>'))+
   '<div class="pack-tier-card-bottom">'+sourceHTML(item)+
   '<select data-pack-rating="'+encodeURIComponent(item.id)+'" aria-label="'+escapeHTML(item.name)+' 개인 티어">'+
   '<option value=""'+(!mine?' selected':'')+'>'+(inherited?'기존 평가 '+prefs.ratings[item.id]:'기본 '+item.tier)+'</option>'+
@@ -161,6 +208,10 @@ function render(){
  modeBox.innerHTML=Object.entries(MODES).map(([id,m])=>'<button type="button" class="pack-tier-mode'+(activeMode===id?' active':'')+'" data-pack-mode="'+id+'" aria-pressed="'+(activeMode===id)+'">'+escapeHTML(m.label)+'</button>').join('');
  floorBox.innerHTML=[1,2,3,4,5].map(f=>'<button type="button" class="pack-tier-floor'+(activeFloor===f?' active':'')+'" data-pack-floor="'+f+'" aria-pressed="'+(activeFloor===f)+'">'+f+'층 <small>'+(floorDifficulty(activeMode,f)==='hard'?'하드':'노말')+'</small></button>').join('');
  if(el('packTierRoute'))el('packTierRoute').textContent=MODES[activeMode].description;
+ const route=ROUTES[activeMode],routeEl=el('packTierQuickRoute');
+ if(routeEl)routeEl.innerHTML='<div class="pack-tier-route-title">'+escapeHTML(route.title)+' <small>대표 추천 경로</small></div>'+
+ '<div class="pack-tier-route-steps">'+route.stops.map((name,index)=>'<button type="button" data-pack-target-floor="'+(index+1)+'" class="pack-tier-route-step'+(activeFloor===index+1?' active':'')+'"><small>'+(index+1)+'층 · '+(floorDifficulty(activeMode,index+1)==='hard'?'하드':'노말')+'</small><strong>'+escapeHTML(name)+'</strong></button>').join('')+'</div>'+
+ '<p>'+escapeHTML(route.note)+'</p>';
  if(el('packTierTag'))el('packTierTag').value=activeTag;
  if(el('packTierRank'))el('packTierRank').value=activeTier;
  const visible=allEntries().filter(matches).sort((a,b)=>TIERS.indexOf(rating(a))-TIERS.indexOf(rating(b))||a.name.localeCompare(b.name,'ko'));
@@ -181,6 +232,11 @@ function wire(){
   const button=e.target.closest('button[data-pack-mode]');
   if(!button||!MODES[button.dataset.packMode])return;
   activeMode=button.dataset.packMode;render();
+ });
+ const routeElement=el('packTierQuickRoute');
+ if(routeElement)routeElement.addEventListener('click',e=>{
+  const btn=e.target.closest('button[data-pack-target-floor]');
+  if(!btn)return;activeFloor=Number(btn.dataset.packTargetFloor);render();
  });
  floorBox.addEventListener('click',e=>{
   const button=e.target.closest('button[data-pack-floor]');
