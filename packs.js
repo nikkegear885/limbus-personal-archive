@@ -129,7 +129,8 @@ const DATA=PACKS.flatMap(({name,normal,hard})=>{
    const note=SPECIAL_NOTES[name]||info?.note||'등장 층 확인 완료. 핵심 기프트·적 구성·보상이 덱과 맞을 때 선택하는 조건부 팩.';
    const tags=name==='새벽 뒤 꿰뚫어 오는 쐐기'?['화상','진동','호흡']:info?.tags||['공통'];
    const source=['카지노 푸어','잊혀진 자들','헬스 치킨','베어낼 것','증오와 절망'].includes(name)?'speed':name==='4호선 - 제 3구간'?'spider':name==='2호선'?'hard':(info?.source||'atlas');
-   result.push({id:floor+'|'+name, name, floor,difficulty,tier,note,tags,source,verified:Boolean(recommendation.S.includes(name)||recommendation.A.includes(name))});
+   const speedCase=['카지노 푸어','잊혀진 자들','헬스 치킨','베어낼 것','꿰뚫을 것','증오와 절망','2호선','4호선 - 제 3구간','1호선','감정에 홀리는 것','가르고 베는 이들','꿰고 뚫는 이들','먹어치운 탐식'].includes(name);
+   result.push({id:floor+'|'+name, name, floor,difficulty,tier,note,tags,source,evidence:speedCase?'route':tier==='A'?'match':'catalog'});
   }
  }
  return result;
@@ -187,14 +188,14 @@ function matches(item){
 }
 function sourceHTML(item){
  const src=SOURCES[item.source];
- return src?'<a class="pack-tier-source" href="'+escapeHTML(src.url)+'" target="_blank" rel="noopener noreferrer">참고 공략 ↗</a>':'<span class="pack-tier-custom-label">내가 추가한 팩</span>';
+ return src?'<a class="pack-tier-source" href="'+escapeHTML(src.url)+'" target="_blank" rel="noopener noreferrer">'+(item.source==='atlas'?'등장 층 도감 ↗':'참고 공략 ↗')+'</a>':'<span class="pack-tier-custom-label">내가 추가한 팩</span>';
 }
 function packCard(item){
  const current=rating(item), mine=customRating(item), inherited=!mine&&prefs.ratings[item.id];
  return '<article class="pack-tier-card'+(item.custom?' user-pack':'')+'">'+
   '<div class="pack-tier-card-top"><div class="pack-tier-name">'+escapeHTML(item.name)+'</div><span class="pack-tier-token '+current.toLowerCase()+'">'+current+'</span></div>'+
   '<p>'+escapeHTML(item.note||'내가 추가한 테마팩')+'</p>'+
- (item.custom?'':('<span class="pack-tier-evidence">'+(item.verified?'공략·선택 사례 반영':'조건부 · 도감에서 등장 층 확인')+'</span>'))+
+ (item.custom?'':('<span class="pack-tier-evidence">'+(item.evidence==='route'?'실제 루트 사례 참고':item.evidence==='match'?'덱·기프트에 따른 대안':'등장 층 확인 · 속도 평가는 조건부')+'</span>'))+
   '<div class="pack-tier-card-bottom">'+sourceHTML(item)+
   '<select data-pack-rating="'+encodeURIComponent(item.id)+'" aria-label="'+escapeHTML(item.name)+' 개인 티어">'+
   '<option value=""'+(!mine?' selected':'')+'>'+(inherited?'기존 평가 '+prefs.ratings[item.id]:'기본 '+item.tier)+'</option>'+
