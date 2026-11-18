@@ -192,6 +192,12 @@
 .pack-tier-add-note{font-size:11px;color:var(--muted);margin-top:9px;line-height:1.7}
 @media(max-width:650px){.pack-tier-controls input{flex:1 1 100%}.pack-tier-controls select{min-width:calc(50% - 10px)}.pack-tier-grid{grid-template-columns:1fr}.pack-tier-floor{padding:10px 4px;font-size:12px}.pack-tier-add{padding:12px}}
 
+.collection-inventory{margin:10px 0 16px;padding:13px 16px;background:#182228;border:1px solid #394448;border-radius:12px;color:#d5dfd9}
+.collection-inventory-heading{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;font-weight:800;margin-bottom:9px}
+.collection-inventory-heading small{color:#93a5a2;font-weight:500}
+.collection-inventory-shards{display:flex;flex-wrap:wrap;gap:7px 11px;font-size:12px}
+.collection-inventory-shards span{white-space:nowrap}
+.collection-inventory-shards b{color:#f2d39d}
 </style>
 </head>
 <body>
@@ -265,6 +271,7 @@
       </div>
       <div class="toolbar"><div><div class="section-title" id="collectionStatus">보유 현황</div><div class="subtext" id="collectionVisible"></div></div><div class="top-actions"><button class="btn small primary" id="collectionDownloadPicture" type="button" title="선택한 보유 항목을 PNG로 만들고 미리 본 뒤 저장합니다.">▧ 보유 사진 미리보기</button><button class="btn small" id="collectionCopy" type="button">보유 목록 복사</button></div></div>
       
+       <div id="personalShardSnapshot" class="collection-inventory" aria-live="polite"></div>
        <div id="collectionGrid" class="collection-grid" aria-live="polite"></div>
       <p class="collection-footnote">인격 195종·E.G.O 117종 기준. 기본 지급 항목은 보유로 고정됩니다. 모든 카드에 게임 내 일러스트 출처를 연결했으며, 외부 이미지 제공처에서 연결에 실패하면 이미지 미등록 안내가 표시됩니다. 카드는 Project Moon 게임 내 일러스트를 사용하며, 자료 출처는 <a href="https://github.com/raphon-create/limbus-tracker" target="_blank" rel="noopener noreferrer">인격 사진 자료</a> · <a href="https://github.com/eldritchtools/limbus-shared-library" target="_blank" rel="noopener noreferrer">E.G.O 사진 자료</a> · <a href="https://limbuscompany.wiki.gg/wiki/Category:E.G.O_Images" target="_blank" rel="noopener noreferrer">최신 E.G.O 이미지</a> · <a href="https://limbusdeck.com/ko/database/identities" target="_blank" rel="noopener noreferrer">최신 인격 이미지</a>입니다.</p>
     </div>
@@ -289,6 +296,7 @@
 <input type="file" id="photoInput" accept="image/*" multiple hidden><input type="file" id="restoreInput" accept="application/json,.json" hidden>
 <script src="collection-data.js?v=20261113-horizontal-sinner-labels1"></script>
 <script src="collection.js?v=20261113-horizontal-sinner-labels1"></script>
+<script src="personal-snapshot.js?v=20261118-owned-shards"></script>
 <script src="packs.js?v=20261116-pack-100-route-audit"></script>
 <script>
 'use strict';
@@ -379,7 +387,27 @@ async function startNewRun(){if(activeRun())return;const r={id:uuid(),name:`${st
 function exportBackup(){const payload={format:'limbus-archive',version:3,exportedAt:new Date().toISOString(),notes:state.notes,runs:state.runs,giftPrefs:state.giftPrefs,collectionOwned:state.collectionOwned,collectionExportPrefs:collectionExportReadPreferences(),packTierPrefs:window.LIMBUS_PACK_TIERS.backup()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`limbus-archive-backup-${new Date().toISOString().slice(0,10)}.json`;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);toast('사진을 포함한 전체 백업 파일을 저장했어요')}
 async function restoreBackup(file){if(!file)return;if(file.size>200*1024*1024){alert('백업 파일이 너무 큽니다');return}let p;try{p=JSON.parse(await file.text());if(p.format!=='limbus-archive'||!Array.isArray(p.notes)||!Array.isArray(p.runs))throw new Error('지원되지 않는 백업 형식')}catch(e){alert(`백업 파일을 읽지 못했어요: ${e.message}`);return}if(!confirm(`공략 ${p.notes.length}개, 회차 ${p.runs.length}개를 복원할까요?\n현재 데이터는 전부 백업 파일로 교체됩니다. 기존 자료는 먼저 백업하는 것을 권장합니다.`))return;try{for(const key of ['notes','runs'])await action(key,'clear');for(const raw of p.notes){if(!raw||typeof raw.title!=='string'||!Array.isArray(raw.blocks))continue;const n={...raw,id:String(raw.id||uuid()),title:raw.title.slice(0,150),category:CATEGORIES.includes(raw.category)?raw.category:'기타',tags:Array.isArray(raw.tags)?raw.tags.map(String).slice(0,20):[],source:safeURL(raw.source)||'',blocks:raw.blocks.filter(b=>b.type==='text'||b.type==='image').map(b=>b.type==='text'?{type:'text',content:String(b.content||'')}:{type:'image',data:safeImage(b.data),caption:String(b.caption||'')})};await action('notes','put',n)}for(const r of p.runs){if(!r||!r.id||!r.start)continue;await action('runs','put',{id:String(r.id),name:String(r.name||'회차'),start:r.start,floor3:r.floor3||null,floor4:r.floor4||null,floor5:r.floor5||null,memo:String(r.memo||''),archived:true})}if(p.giftPrefs&&typeof p.giftPrefs==='object'&&!Array.isArray(p.giftPrefs)){const allowed=Object.fromEntries(Object.entries(p.giftPrefs).filter(([k,v])=>typeof k==='string'&&k.length<110&&v&&typeof v==='object').map(([k,v])=>[k,{owned:!!v.owned,rank:['S','A','B','C'].includes(v.rank)?v.rank:undefined}]));state.giftPrefs=allowed;await saveGiftPrefs()}if(p.collectionOwned&&typeof p.collectionOwned==='object'&&!Array.isArray(p.collectionOwned)){const ids=new Set(collectionRows().map(x=>x.id));state.collectionOwned=Object.fromEntries(Object.entries(p.collectionOwned).filter(([k,v])=>ids.has(k)&&v===true));await collectionSave()}if(p.collectionExportPrefs&&typeof p.collectionExportPrefs==='object'&&!Array.isArray(p.collectionExportPrefs)){collectionExportApplyPreferences(p.collectionExportPrefs);await collectionExportSavePreferences()}if(p.packTierPrefs&&typeof p.packTierPrefs==='object'&&!Array.isArray(p.packTierPrefs))await window.LIMBUS_PACK_TIERS.restore(p.packTierPrefs);state.activeId=null;state.viewId=null;await refresh();toast('백업 복원 완료')}catch(e){alert(`복원 중 오류: ${e.message}`)}}
 function wire(){wireGifts();wireCollection();window.LIMBUS_PACK_TIERS.wire();CATEGORIES.forEach(c=>{const op=document.createElement('option');op.value=c;op.textContent=c;$('editCategory').append(op)});document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>changePage(b.dataset.page));$('newBtn').onclick=()=>startEdit();$('backupBtn').onclick=exportBackup;$('restoreBtn').onclick=()=>$('restoreInput').click();$('restoreInput').onchange=async e=>{await restoreBackup(e.target.files[0]);e.target.value=''};$('searchInput').oninput=e=>{state.search=e.target.value;renderList()};$('editClose').onclick=$('editCancel').onclick=closeEdit;$('editSave').onclick=saveEditor;$('addText').onclick=()=>{saveBlockInputs();state.editing.blocks.push({type:'text',content:''});renderBlocks()};$('addPhoto').onclick=()=>$('photoInput').click();$('photoInput').onchange=async e=>{await attachFiles(e.target.files);e.target.value=''};const dz=$('dropzone');dz.ondragover=e=>{e.preventDefault();dz.classList.add('drag')};dz.ondragleave=()=>dz.classList.remove('drag');dz.ondrop=async e=>{e.preventDefault();dz.classList.remove('drag');await attachFiles(e.dataTransfer.files)};$('editorOverlay').addEventListener('paste',async e=>{const files=[...e.clipboardData.items].filter(x=>x.kind==='file'&&x.type.startsWith('image/')).map(x=>x.getAsFile());if(files.length){e.preventDefault();await attachFiles(files)}});$('runStart').onclick=startNewRun;$('runAddManual').onclick=()=>editRun();$('runEditSave').onclick=saveRunEdit;$('runEditClose').onclick=$('runEditCancel').onclick=()=>{$('runOverlay').classList.remove('show');state.runEditing=null};$('lightbox').onclick=()=>{$('lightbox').classList.remove('show');$('lightboxImg').src=''};window.onkeydown=e=>{if(e.key==='Escape'){if($('lightbox').classList.contains('show'))$('lightbox').click();else if($('editorOverlay').classList.contains('show'))closeEdit();else if($('runOverlay').classList.contains('show'))$('runEditCancel').click()}};setInterval(liveTick,1000)}
-async function init(){try{state.db=await openDb();await seed();const preferences=await all('meta');state.giftPrefs=preferences.find(x=>x.id==='giftPrefsV1')?.values||{};state.collectionOwned=preferences.find(x=>x.id==='collectionOwnedV1')?.values||{};state.collectionExportPrefs=preferences.find(x=>x.id==='collectionExportPrefsV1')?.values||null;window.LIMBUS_PACK_TIERS.load(preferences.find(x=>x.id==='packTierPrefsV1')?.values||null);wire();await refresh()}catch(e){console.error(e);document.querySelector('.main').innerHTML=`<div class="empty"><strong>브라우저 저장소를 열지 못했어요.</strong><p>일반 브라우저 창에서 파일을 열거나 브라우저의 사이트 데이터 저장 권한을 확인해 주세요.<br>오류: ${esc(e.message)}</p></div>`}}
+async function init(){try{state.db=await openDb();await seed();const preferences=await all('meta');state.giftPrefs=preferences.find(x=>x.id==='giftPrefsV1')?.values||{};state.collectionOwned=preferences.find(x=>x.id==='collectionOwnedV1')?.values||{};
+const snapshot=window.LIMBUS_PERSONAL_SNAPSHOT;
+if(snapshot&&!preferences.some(x=>x.id==='collectionSnapshotAppliedV20261118')){
+ // 업로드한 3성 인격/E.G.O만 한 번 갱신합니다. 1·2성 보유 기록과 나머지 자료는 보존합니다.
+ const snapshotIds=new Set(snapshot.ownedIds);
+ const nextOwned={...state.collectionOwned};
+ for(const row of collectionRows()){
+  if(row.kind==='ego'||(row.kind==='identity'&&row.rarity===3)){
+   if(snapshotIds.has(row.id))nextOwned[row.id]=true;
+   else delete nextOwned[row.id];
+  }
+ }
+ state.collectionOwned=nextOwned;
+ await action('meta','put',{id:'collectionOwnedV1',values:nextOwned});
+ await action('meta','put',{id:'collectionSnapshotAppliedV20261118',value:true});
+}
+if(snapshot){
+ const names=Object.fromEntries(window.LIMBUS_COLLECTION_CATALOG.sinners.map(s=>[s.id,s.name]));
+ const shardRows=Object.entries(snapshot.shards).map(([id,v])=>'<span>'+esc(names[id]||id)+' <b>'+Number(v).toLocaleString('ko-KR')+'</b></span>').join('');
+ $('personalShardSnapshot').innerHTML='<div class="collection-inventory-heading">보유 파편 · 선택 상자 <b>'+Number(snapshot.selectorBoxes).toLocaleString('ko-KR')+'개</b> <small>'+esc(snapshot.date)+' 기준 · 3성 인격 45명 / E.G.O 33종</small></div><div class="collection-inventory-shards">'+shardRows+'</div>';
+}state.collectionExportPrefs=preferences.find(x=>x.id==='collectionExportPrefsV1')?.values||null;window.LIMBUS_PACK_TIERS.load(preferences.find(x=>x.id==='packTierPrefsV1')?.values||null);wire();await refresh()}catch(e){console.error(e);document.querySelector('.main').innerHTML=`<div class="empty"><strong>브라우저 저장소를 열지 못했어요.</strong><p>일반 브라우저 창에서 파일을 열거나 브라우저의 사이트 데이터 저장 권한을 확인해 주세요.<br>오류: ${esc(e.message)}</p></div>`}}
 init();
 </script>
 </body>
